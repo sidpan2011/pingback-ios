@@ -6,12 +6,12 @@ struct DueBadge: View {
         let rel = date.relativeDescription()
         let color: Color = date < .now ? .red : .orange
         return Text(rel)
-            .font(.caption)
+            .font(.system(size: 14))
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
-            .background(color.opacity(0.15))
+            // .background(color.opacity(0.15))
             .foregroundStyle(color)
-            .clipShape(Capsule())
+            // .clipShape(Capsule())
     }
 }
 

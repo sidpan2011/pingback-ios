@@ -40,11 +40,11 @@ struct FollowUp: Identifiable, Equatable {
     var contactLabel: String
     var app: AppKind
     var snippet: String
+    /// Optional URL associated with this follow-up (web link, doc, etc.)
+    var url: String? = nil
     var verb: String
     var dueAt: Date
     var createdAt: Date
     var status: Status
     var lastNudgedAt: Date?
 }
-
-
