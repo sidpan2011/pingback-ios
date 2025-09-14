@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="22758" systemVersion="24.6.0" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
+    <entity name="CDFollowUp" representedClassName="CDFollowUp" syncable="YES" codeGenerationType="class">
+        <attribute name="id" optional="NO" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="title" optional="NO" attributeType="String"/>
+        <attribute name="notes" optional="YES" attributeType="String"/>
+        <attribute name="dueAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="repeatRule" optional="YES" attributeType="String"/>
+        <attribute name="webURL" optional="YES" attributeType="String"/>
+        <attribute name="createdAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="updatedAt" optional="NO" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="isCompleted" optional="NO" attributeType="Boolean" usesScalarValueType="YES" defaultValueString="NO"/>
+        <attribute name="type" optional="NO" attributeType="String"/>
+        <attribute name="contactLabel" optional="NO" attributeType="String"/>
+        <attribute name="app" optional="NO" attributeType="String"/>
+        <attribute name="snippet" optional="NO" attributeType="String"/>
+        <attribute name="verb" optional="NO" attributeType="String"/>
+        <attribute name="status" optional="NO" attributeType="String"/>
+        <attribute name="lastNudgedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="deletedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+    </entity>
+    <entity name="CDUserProfile" representedClassName="CDUserProfile" syncable="YES" codeGenerationType="class">
+        <attribute name="id" optional="NO" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="fullName" optional="NO" attributeType="String"/>
+        <attribute name="email" optional="YES" attributeType="String"/>
+        <attribute name="avatarData" optional="YES" attributeType="Binary"/>
+        <attribute name="theme" optional="NO" attributeType="String"/>
+    </entity>
+</model>

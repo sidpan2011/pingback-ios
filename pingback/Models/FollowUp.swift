@@ -32,6 +32,25 @@ enum AppKind: String, CaseIterable, Identifiable {
         case .other: return "square.grid.2x2"
         }
     }
+    
+    var hasCustomLogo: Bool {
+        switch self {
+        case .whatsapp, .telegram, .sms, .email:
+            return true
+        case .other:
+            return false
+        }
+    }
+    
+    var logoImageName: String {
+        switch self {
+        case .whatsapp: return "whatsapp_logo"
+        case .telegram: return "telegram_logo"
+        case .sms: return "sms_logo"
+        case .email: return "email_logo"
+        case .other: return "other_logo"
+        }
+    }
 }
 
 struct FollowUp: Identifiable, Equatable {

@@ -4,7 +4,7 @@ import ContactsUI
 
 struct AddFollowUpView: View {
     @Environment(\.dismiss) private var dismiss
-    @ObservedObject var store: FollowUpStore
+    @ObservedObject var store: NewFollowUpStore
     
     let existingItem: FollowUp?
     
@@ -26,7 +26,7 @@ struct AddFollowUpView: View {
     @State private var showDateSheet: Bool = false
     @State private var showTimeSheet: Bool = false
     
-    init(store: FollowUpStore, existingItem: FollowUp? = nil) {
+    init(store: NewFollowUpStore, existingItem: FollowUp? = nil) {
         self.store = store
         self.existingItem = existingItem
     }
@@ -402,33 +402,73 @@ struct AddFollowUpView: View {
         guard isSaveEnabled else { return }
         
         let finalContact = isForSelf ? "Self" : contactName
+        let trimmedURL = url.trimmingCharacters(in: .whitespacesAndNewlines)
         
         if let existingItem = existingItem {
             // Update existing item
-            if let index = store.items.firstIndex(of: existingItem) {
-                store.items[index].type = selectedType
-                store.items[index].contactLabel = finalContact
-                store.items[index].app = selectedApp
-                store.items[index].snippet = notes
-                let trimmedURL = url.trimmingCharacters(in: .whitespacesAndNewlines)
-                store.items[index].url = trimmedURL.isEmpty ? nil : trimmedURL
-                store.items[index].verb = suggestedVerb ?? "follow up"
-                store.items[index].dueAt = composedDue ?? existingItem.dueAt
+            var updatedItem = existingItem
+            updatedItem.type = selectedType
+            updatedItem.contactLabel = finalContact
+            updatedItem.app = selectedApp
+            updatedItem.snippet = notes
+            updatedItem.url = trimmedURL.isEmpty ? nil : trimmedURL
+            updatedItem.verb = suggestedVerb ?? "follow up"
+            updatedItem.dueAt = composedDue ?? existingItem.dueAt
+            
+            Task {
+                do {
+                    try await store.update(updatedItem)
+                } catch {
+                    print("Failed to update follow-up: \(error)")
+                }
             }
         } else {
-            // Create new item
-            store.add(
-                from: notes,
-                type: selectedType,
-                contact: finalContact,
+            // Create new item - add URL to the add method
+            print("🎯 AddFollowUpView: Creating new follow-up")
+            print("   - Raw notes: '\(notes)'")
+            print("   - Final contact: '\(finalContact)'")
+            print("   - Selected type: \(selectedType)")
+            print("   - Selected app: \(selectedApp)")
+            print("   - Trimmed URL: '\(trimmedURL)'")
+            
+            let parsed = Parser.shared.parse(text: notes, now: Date(), eodHour: store.settings.eodHour, morningHour: store.settings.morningHour)
+            let due = composedDue ?? parsed?.dueAt ?? defaultDue(now: Date())
+            let verb = parsed?.verb ?? Parser.shared.detectVerb(in: notes) ?? "follow up"
+            let finalType = parsed?.type ?? selectedType
+            
+            print("   - Parsed verb: '\(verb)'")
+            print("   - Final type: \(finalType)")
+            print("   - Due date: \(due)")
+            
+            let followUp = FollowUp(
+                id: UUID(),
+                type: finalType,
+                contactLabel: finalContact.isEmpty ? "Unknown" : finalContact,
                 app: selectedApp,
-                overrideDue: composedDue
+                snippet: notes.trimmingCharacters(in: .whitespacesAndNewlines),
+                url: trimmedURL.isEmpty ? nil : trimmedURL,
+                verb: verb,
+                dueAt: due,
+                createdAt: Date(),
+                status: .open,
+                lastNudgedAt: nil
             )
             
-            // Set URL after creating the item
-            if let lastItem = store.items.last {
-                let trimmedURL = url.trimmingCharacters(in: .whitespacesAndNewlines)
-                store.items[store.items.count - 1].url = trimmedURL.isEmpty ? nil : trimmedURL
+            print("📝 AddFollowUpView: Final FollowUp object:")
+            print("   - ID: \(followUp.id.uuidString)")
+            print("   - Snippet: '\(followUp.snippet)'")
+            print("   - ContactLabel: '\(followUp.contactLabel)'")
+            print("   - Verb: '\(followUp.verb)'")
+            print("   - Type: \(followUp.type.rawValue)")
+            print("   - App: \(followUp.app.rawValue)")
+            
+            Task {
+                do {
+                    try await store.create(followUp)
+                    print("✅ AddFollowUpView: Successfully created follow-up")
+                } catch {
+                    print("❌ AddFollowUpView: Failed to create follow-up: \(error)")
+                }
             }
         }
         
@@ -437,6 +477,21 @@ struct AddFollowUpView: View {
         impactFeedback.impactOccurred()
         
         dismiss()
+    }
+    
+    /// Default due date calculation
+    private func defaultDue(now: Date) -> Date {
+        let calendar = Calendar.current
+        let hour = calendar.component(.hour, from: now)
+        
+        if hour < store.settings.eodHour {
+            // Before EOD, due today at EOD
+            return calendar.date(bySettingHour: store.settings.eodHour, minute: 0, second: 0, of: now) ?? now
+        } else {
+            // After EOD, due tomorrow at morning hour
+            let tomorrow = calendar.date(byAdding: .day, value: 1, to: now) ?? now
+            return calendar.date(bySettingHour: store.settings.morningHour, minute: 0, second: 0, of: tomorrow) ?? now
+        }
     }
 }
 
@@ -488,11 +543,11 @@ struct ContactPickerHost: UIViewControllerRepresentable {
 }
 
 #Preview("New Follow-up") {
-    AddFollowUpView(store: FollowUpStore())
+    AddFollowUpView(store: NewFollowUpStore())
 }
 
 #Preview("Edit Follow-up") {
-    AddFollowUpView(store: FollowUpStore(), existingItem: FollowUp(
+    AddFollowUpView(store: NewFollowUpStore(), existingItem: FollowUp(
         id: UUID(),
         type: .doIt,
         contactLabel: "John Doe",

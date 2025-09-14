@@ -2,6 +2,7 @@ import SwiftUI
 
 struct DueBadge: View {
     let date: Date
+    
     var body: some View {
         let rel = date.relativeDescription()
         let color: Color = date < .now ? .red : .orange
