@@ -8,6 +8,7 @@ final class NewFollowUpStore: ObservableObject {
     
     // MARK: - Properties
     private let coreDataStack: CoreDataStack
+    private let notificationManager: NotificationManager
     
     @Published var followUps: [FollowUp] = []
     @Published var isLoading = false
@@ -21,8 +22,9 @@ final class NewFollowUpStore: ObservableObject {
     
     // MARK: - Initialization
     
-    init(coreDataStack: CoreDataStack = .shared) {
+    init(coreDataStack: CoreDataStack = .shared, notificationManager: NotificationManager = .shared) {
         self.coreDataStack = coreDataStack
+        self.notificationManager = notificationManager
         print("🚀 NewFollowUpStore: Initializing store")
         
         // Load follow-ups from Core Data on initialization
@@ -45,7 +47,7 @@ final class NewFollowUpStore: ObservableObject {
         print("   - DueAt: \(followUp.dueAt)")
         
         // Use main context for both read and write to avoid context sync issues
-        try await MainActor.run {
+        let cdFollowUp = try await MainActor.run {
             let context = coreDataStack.viewContext
             let cdFollowUp = CDFollowUp(context: context)
             self.mapFollowUpToCoreData(followUp, to: cdFollowUp)
@@ -61,10 +63,18 @@ final class NewFollowUpStore: ObservableObject {
             
             try self.coreDataStack.saveWithTimestamp(context)
             print("💾 NewFollowUpStore: Successfully saved to Core Data")
+            
+            return cdFollowUp
         }
+        
+        // Schedule creation nudge notification
+        await notificationManager.scheduleCreationNudge(for: cdFollowUp)
         
         print("🔄 NewFollowUpStore: Reloading follow-ups after create")
         await loadFollowUps()
+        
+        // Schedule notification for the new follow-up
+        await notificationManager.scheduleNotification(for: cdFollowUp)
     }
     
     /// Update an existing follow-up
@@ -74,7 +84,7 @@ final class NewFollowUpStore: ObservableObject {
         print("   - ContactLabel: '\(followUp.contactLabel)'")
         print("   - Verb: '\(followUp.verb)'")
         
-        try await MainActor.run {
+        let cdFollowUp = try await MainActor.run {
             let context = coreDataStack.viewContext
             let request: NSFetchRequest<CDFollowUp> = CDFollowUp.fetchRequest()
             request.predicate = NSPredicate(format: "id == %@", followUp.id as CVarArg)
@@ -89,10 +99,15 @@ final class NewFollowUpStore: ObservableObject {
             self.mapFollowUpToCoreData(followUp, to: cdFollowUp)
             try self.coreDataStack.saveWithTimestamp(context)
             print("💾 NewFollowUpStore: Successfully updated in Core Data")
+            
+            return cdFollowUp
         }
         
         print("🔄 NewFollowUpStore: Reloading follow-ups after update")
         await loadFollowUps()
+        
+        // Reschedule notification for the updated follow-up
+        await notificationManager.scheduleNotification(for: cdFollowUp)
     }
     
     /// Delete a follow-up (soft delete)
@@ -120,6 +135,9 @@ final class NewFollowUpStore: ObservableObject {
             print("🗑️ NewFollowUpStore: Successfully soft deleted follow-up")
         }
         
+        // Cancel notification for deleted follow-up
+        await notificationManager.cancelNotification(for: id)
+        
         print("🔄 NewFollowUpStore: Reloading follow-ups after delete")
         await loadFollowUps()
     }
@@ -129,14 +147,40 @@ final class NewFollowUpStore: ObservableObject {
         var updatedFollowUp = followUp
         updatedFollowUp.status = completed ? .done : .open
         try await update(updatedFollowUp)
+        
+        // Cancel notification if marking as completed
+        if completed {
+            await notificationManager.cancelNotification(for: followUp.id)
+        }
+        
+        // Update badge count
+        await notificationManager.updateBadgeCount()
     }
     
     /// Snooze a follow-up
     func snooze(_ followUp: FollowUp, until date: Date) async throws {
-        var updatedFollowUp = followUp
-        updatedFollowUp.dueAt = date
-        updatedFollowUp.status = .snoozed
-        try await update(updatedFollowUp)
+        // Update the Core Data entity with snooze information
+        let cdFollowUp = try await MainActor.run {
+            let context = coreDataStack.viewContext
+            let request: NSFetchRequest<CDFollowUp> = CDFollowUp.fetchRequest()
+            request.predicate = NSPredicate(format: "id == %@", followUp.id as CVarArg)
+            request.fetchLimit = 1
+            
+            guard let cdFollowUp = try context.fetch(request).first else {
+                throw FollowUpStoreError.notFound
+            }
+            
+            cdFollowUp.snoozedUntil = date
+            cdFollowUp.status = Status.snoozed.rawValue
+            try self.coreDataStack.saveWithTimestamp(context)
+            
+            return cdFollowUp
+        }
+        
+        // Reschedule notification with new snooze time
+        await notificationManager.scheduleNotification(for: cdFollowUp)
+        
+        await loadFollowUps()
     }
     
     /// Add a new follow-up (compatible with old FollowUpStore interface)
@@ -369,6 +413,14 @@ final class NewFollowUpStore: ObservableObject {
         cdFollowUp.status = followUp.status.rawValue
         cdFollowUp.lastNudgedAt = followUp.lastNudgedAt
         cdFollowUp.isCompleted = followUp.status == .done
+        
+        // Set notification-related fields
+        if cdFollowUp.shouldNotify == false { // Only set if not already set
+            cdFollowUp.shouldNotify = true
+        }
+        if cdFollowUp.creationTimeZone == nil {
+            cdFollowUp.creationTimeZone = TimeZone.current.identifier
+        }
         
         // Set timestamps if this is a new entity
         if cdFollowUp.createdAt == nil {

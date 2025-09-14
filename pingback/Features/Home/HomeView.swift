@@ -8,18 +8,24 @@ struct HomeView: View {
     @State private var showAddSheet: Bool = false
     @State private var selectedItem: FollowUp?
     @State private var showSettingsSheet: Bool = false
+    @State private var showNotificationsSheet: Bool = false
     @State private var isCompletedSectionExpanded = false
+    @State private var isOverdueSectionExpanded = false
+    @State private var notificationCount = 0
+    @State private var unreadNotificationIds: Set<String> = []
+    @State private var notificationRefreshTimer: Timer?
     @FocusState private var isSearchFocused: Bool
     // Removed themeManager dependency for instant theme switching
 
     enum Filter: String, CaseIterable { 
-        case all, doIt, waitingOn, completed 
+        case all, doIt, waitingOn, overdue, completed 
         
         var title: String {
             switch self {
             case .all: return "All"
             case .doIt: return "Do"
             case .waitingOn: return "Waiting-On"
+            case .overdue: return "Overdue"
             case .completed: return "Completed"
             }
         }
@@ -37,8 +43,8 @@ struct HomeView: View {
                     .padding(.top, 8)
 
                 filterChips
-                    .padding(.horizontal)
-                    .padding(.top, 8)
+                    .padding(.top, 12)
+                    .padding(.bottom, 4)
 
                 titleRow
                     .padding(.horizontal)
@@ -77,6 +83,13 @@ struct HomeView: View {
                 SettingsSheet()
                     .environmentObject(userProfileStore)
             }
+            .sheet(isPresented: $showNotificationsSheet) {
+                NotificationsActivityView()
+                    .onDisappear {
+                        // Mark all notifications as read when sheet is dismissed
+                        markAllNotificationsAsRead()
+                    }
+            }
             .onAppear {
                 print("🏠 HomeView: View appeared")
                 print("   - Store has \(store.followUps.count) follow-ups")
@@ -84,41 +97,89 @@ struct HomeView: View {
                 if let error = store.error {
                     print("   - Store error: \(error)")
                 }
+                loadReadNotificationIds()
+                loadNotificationCount()
+                
+                // Start periodic notification count refresh
+                startNotificationRefreshTimer()
+            }
+            .onChange(of: store.items) { _ in
+                // Update notification count when items change
+                loadNotificationCount()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+                // Update notification count when app becomes active (user might have received notifications)
+                loadNotificationCount()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+                // Update notification count when app enters foreground
+                loadNotificationCount()
+            }
+            .onDisappear {
+                // Stop timer when view disappears
+                notificationRefreshTimer?.invalidate()
+                notificationRefreshTimer = nil
             }
         }
     }
 
     private var header: some View {
         HStack(alignment: .center, spacing: 12) {
-            Text("Pingback")
-                .font(.largeTitle.bold())
-                .foregroundStyle(.primary)
             Spacer()
-            Button {
-                showSettingsSheet = true
-            } label: {
-                ZStack(alignment: .topTrailing) {
-                    Image(systemName: "ellipsis")
-                        .font(.system(size: 22, weight: .medium))
-                        .foregroundStyle(.primary)
-                        .rotationEffect(.degrees(90))
-                    
-                    // Pending badge for incomplete profile
-                    if userProfileStore.profile?.isProfileIncomplete ?? true {
-                        Circle()
-                            .fill(Color.red)
-                            .frame(width: 16, height: 16)
-                            .overlay(
-                                Text("1")
-                                    .font(.system(size: 10, weight: .bold))
-                                    .foregroundColor(.white)
-                            )
-                            .offset(x: 6, y: -8)
+            
+            HStack(spacing: 24) {
+                // Notifications button
+                Button {
+                    showNotificationsSheet = true
+                } label: {
+                    ZStack(alignment: .topTrailing) {
+                        Image(systemName: "bell")
+                            .font(.system(size: 20, weight: .medium))
+                            .foregroundStyle(.primary)
+                        
+                        // Notification count badge
+                        if notificationCount > 0 {
+                            Circle()
+                                .fill(Color.red)
+                                .frame(width: 16, height: 16)
+                                .overlay(
+                                    Text("\(notificationCount)")
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundColor(.white)
+                                )
+                                .offset(x: 8, y: -8)
+                        }
                     }
                 }
+                .buttonStyle(.plain)
+                
+                // Settings button
+                Button {
+                    showSettingsSheet = true
+                } label: {
+                    ZStack(alignment: .topTrailing) {
+                        Image(systemName: "gearshape")
+                            .font(.system(size: 20, weight: .medium))
+                            .foregroundStyle(.primary)
+                        
+                        // Pending badge for incomplete profile
+                        if userProfileStore.profile?.isProfileIncomplete ?? true {
+                            Circle()
+                                .fill(Color.red)
+                                .frame(width: 12, height: 12)
+                                .overlay(
+                                    Text("1")
+                                        .font(.system(size: 8, weight: .bold))
+                                        .foregroundColor(.white)
+                                )
+                                .offset(x: 6, y: -6)
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
+        .padding(.vertical, 8)
     }
 
     private var searchField: some View {
@@ -162,12 +223,15 @@ struct HomeView: View {
     }
 
     private var filterChips: some View {
-        HStack(spacing: 8) {
-            chip(title: "All", isSelected: selectedFilter == .all) { selectedFilter = .all }
-            chip(title: "Do", isSelected: selectedFilter == .doIt) { selectedFilter = .doIt }
-            chip(title: "Waiting-On", isSelected: selectedFilter == .waitingOn) { selectedFilter = .waitingOn }
-            chip(title: "Completed", isSelected: selectedFilter == .completed) { selectedFilter = .completed }
-            Spacer()
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                chip(title: "All", isSelected: selectedFilter == .all) { selectedFilter = .all }
+                chip(title: "Do", isSelected: selectedFilter == .doIt) { selectedFilter = .doIt }
+                chip(title: "Waiting-On", isSelected: selectedFilter == .waitingOn) { selectedFilter = .waitingOn }
+                chip(title: "Overdue", isSelected: selectedFilter == .overdue) { selectedFilter = .overdue }
+                chip(title: "Completed", isSelected: selectedFilter == .completed) { selectedFilter = .completed }
+            }
+            .padding(.horizontal)
         }
     }
 
@@ -191,6 +255,7 @@ struct HomeView: View {
                 )
         }
         .buttonStyle(.plain)
+        .padding(.vertical, 4)
     }
 
     private var titleRow: some View {
@@ -206,6 +271,7 @@ struct HomeView: View {
         case .all: return "All"
         case .doIt: return "Do"
         case .waitingOn: return "Waiting-On"
+        case .overdue: return "Overdue"
         case .completed: return "Completed"
         }
     }
@@ -287,6 +353,57 @@ struct HomeView: View {
                         }
                     }
                     
+                    // Overdue section (only show in "All" filter and if there are overdue items)
+                    if selectedFilter == .all && !overdueItems.isEmpty {
+                        Section {
+                            if isOverdueSectionExpanded {
+                                ForEach(overdueItems) { item in
+                                    FollowUpRow(
+                                        item: item,
+                                        onBump: { bumpItem(item) },
+                                        onSnooze: { snoozeItem(item) },
+                                        onDetails: { selectedItem = item },
+                                        onDone: { markDone(item) },
+                                        onDelete: { deleteItem(item) }
+                                    )
+                                    .listRowInsets(EdgeInsets(top: 2, leading: 0, bottom: 2, trailing: 0))
+                                }
+                            }
+                        } header: {
+                            Button(action: {
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    isOverdueSectionExpanded.toggle()
+                                }
+                            }) {
+                                HStack {
+                                    Text("Overdue")
+                                        .font(.headline)
+                                        .foregroundStyle(.red)
+                                        .textCase(nil)
+                                    
+                                    Spacer()
+                                    
+                                    Text("\(overdueItems.count)")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.white)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(Color.red)
+                                        .clipShape(Capsule())
+                                    
+                                    Image(systemName: isOverdueSectionExpanded ? "chevron.up" : "chevron.down")
+                                        .font(.system(size: 12, weight: .medium))
+                                        .foregroundStyle(.red)
+                                        .animation(.easeInOut(duration: 0.2), value: isOverdueSectionExpanded)
+                                }
+                                .padding(.top, 8)
+                                .padding(.bottom, 4)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    
                     // Completed section (only show in "All" filter and if there are completed items)
                     if selectedFilter == .all && !completedItems.isEmpty {
                         Section {
@@ -353,11 +470,21 @@ struct HomeView: View {
     }
 
     private var filteredItems: [FollowUp] {
+        let now = Date()
         let base: [FollowUp] = {
             switch selectedFilter {
-            case .all: return store.items.filter { $0.status != .done } // Exclude completed from main list
-            case .doIt: return store.items.filter { $0.type == .doIt && ($0.status == .open || $0.status == .snoozed) }
-            case .waitingOn: return store.items.filter { $0.type == .waitingOn && ($0.status == .open || $0.status == .snoozed) }
+            case .all: 
+                // Exclude completed AND overdue items from main list - overdue items show in their own section
+                return store.items.filter { $0.status != .done && $0.dueAt >= now }
+            case .doIt: 
+                return store.items.filter { 
+                    $0.type == .doIt && ($0.status == .open || $0.status == .snoozed) && $0.dueAt >= now 
+                }
+            case .waitingOn: 
+                return store.items.filter { 
+                    $0.type == .waitingOn && ($0.status == .open || $0.status == .snoozed) && $0.dueAt >= now 
+                }
+            case .overdue: return overdueItems
             case .completed: return store.items.filter { $0.status == .done }
             }
         }()
@@ -385,6 +512,16 @@ struct HomeView: View {
             $0.verb.lowercased().contains(q) 
         }.sorted(by: { first, second in
             first.createdAt > second.createdAt
+        })
+    }
+    
+    private var overdueItems: [FollowUp] {
+        let now = Date()
+        return store.items.filter { item in
+            item.status != .done && item.dueAt < now
+        }.sorted(by: { first, second in
+            // Sort by due date (most overdue first)
+            first.dueAt < second.dueAt
         })
     }
     
@@ -485,12 +622,77 @@ struct HomeView: View {
     }
     
     private func greeting() -> String {
-        let hour = Calendar.current.component(.hour, from: .now)
+        let hour = Calendar.current.component(.hour, from: Date())
         switch hour {
-        case 5..<12: return "Good morning,"
-        case 12..<17: return "Good afternoon,"
-        case 17..<22: return "Good evening,"
-        default: return "Hello,"
+        case 5..<12: return "Good morning"
+        case 12..<17: return "Good afternoon"
+        case 17..<22: return "Good evening"
+        default: return "Good night"
+        }
+    }
+    
+    private func loadNotificationCount() {
+        Task {
+            // Get delivered notifications that haven't been marked as read
+            let deliveredNotifications = await UNUserNotificationCenter.current().deliveredNotifications()
+            let unreadDeliveredCount = deliveredNotifications.filter { notification in
+                !unreadNotificationIds.contains(notification.request.identifier)
+            }.count
+            
+            await MainActor.run {
+                self.notificationCount = unreadDeliveredCount
+                print("📱 Notification count updated: \(self.notificationCount) unread notifications")
+                
+                // Update app badge to match in-app count
+                Task {
+                    try? await UNUserNotificationCenter.current().setBadgeCount(unreadDeliveredCount)
+                }
+            }
+        }
+    }
+    
+    private func markAllNotificationsAsRead() {
+        Task {
+            let deliveredNotifications = await UNUserNotificationCenter.current().deliveredNotifications()
+            await MainActor.run {
+                // Mark all delivered notifications as read
+                for notification in deliveredNotifications {
+                    unreadNotificationIds.insert(notification.request.identifier)
+                }
+                
+                // Update counts
+                self.notificationCount = 0
+                
+                // Clear app badge
+                Task {
+                    try? await UNUserNotificationCenter.current().setBadgeCount(0)
+                }
+                
+                // Store read status in UserDefaults
+                UserDefaults.standard.set(Array(unreadNotificationIds), forKey: "readNotificationIds")
+                
+                print("📱 All notifications marked as read")
+            }
+        }
+    }
+    
+    private func loadReadNotificationIds() {
+        if let readIds = UserDefaults.standard.array(forKey: "readNotificationIds") as? [String] {
+            unreadNotificationIds = Set(readIds)
+        }
+    }
+    
+    private func startNotificationRefreshTimer() {
+        // Stop any existing timer
+        notificationRefreshTimer?.invalidate()
+        
+        // Start a timer that checks for new notifications every 10 seconds
+        notificationRefreshTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { _ in
+            Task {
+                await MainActor.run {
+                    loadNotificationCount()
+                }
+            }
         }
     }
 }
