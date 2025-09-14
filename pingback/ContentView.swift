@@ -25,4 +25,20 @@ struct ContentView: View {
     }
 }
 
-#Preview { ContentView() }
+#Preview { 
+    // Create a simple preview that shows the onboarding state
+    ZStack {
+        Color(.systemBackground).ignoresSafeArea()
+        VStack {
+            Image(systemName: "bolt.horizontal.circle.fill")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 96, height: 96)
+                .foregroundStyle(.tint)
+            
+            Text("Pingback")
+                .font(.largeTitle.bold())
+                .padding(.top)
+        }
+    }
+}

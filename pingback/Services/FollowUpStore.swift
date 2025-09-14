@@ -2,8 +2,18 @@ import Foundation
 
 @MainActor
 final class FollowUpStore: ObservableObject {
-    @Published var items: [FollowUp] = SampleData.bootstrap()
+    @Published var items: [FollowUp] = []
     @Published var settings = Settings()
+    
+    init() {
+        // Initialize with sample data, but handle preview mode
+        if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1" {
+            // For previews, use a simple fallback
+            self.items = []
+        } else {
+            self.items = SampleData.bootstrap()
+        }
+    }
 
     struct Settings {
         var eodHour: Int = 18 // 6pm

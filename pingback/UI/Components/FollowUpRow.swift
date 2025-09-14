@@ -8,14 +8,20 @@ struct FollowUpRow: View {
     var onSnooze: () -> Void
     var onDetails: () -> Void
     var onDone: () -> Void
+    var onDelete: () -> Void
     @Environment(\.openURL) private var openURL
+    
+    // Check if item is completed
+    private var isCompleted: Bool {
+        item.status == .done
+    }
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             // Left: App icon
             Image(systemName: item.app.icon)
                 .font(.system(size: 24))
-                .foregroundStyle(.blue)
+                .foregroundStyle(.tint)
                 .frame(width: 32, height: 32)
                 .padding(.top, 2)
 
@@ -25,20 +31,27 @@ struct FollowUpRow: View {
                 HStack(alignment: .firstTextBaseline) {
                     Text("\(item.contactLabel) · \(item.verb)")
                         .font(.body)
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(isCompleted ? .secondary : .primary)
                         .lineLimit(1)
                     Spacer()
 
-
-                    // Due badge on the right
-                    DueBadge(date: item.dueAt)
+                    // Due badge or Done badge
+                    if isCompleted {
+                        Text("Done")
+                            .font(.system(size: 14))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        DueBadge(date: item.dueAt)
+                    }
                 }
 
                 // Second line: message/snippet (if any)
                 if !item.snippet.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     Text(item.snippet)
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(isCompleted ? .secondary : .secondary)
                         .lineLimit(2)
                 }
 
@@ -48,17 +61,17 @@ struct FollowUpRow: View {
                     HStack(spacing: 8) {
                         HStack(spacing: 6) {
                             Image(systemName: "link")
-                                .foregroundStyle(.blue)
+                                .foregroundStyle(.tint)
                                 .font(.system(size: 14, weight: .medium))
                             
                             Text(urlDisplay(url))
                                 .lineLimit(1)
                                 .font(.caption)
-                                .foregroundStyle(.blue)
+                                .foregroundStyle(.tint)
                         }
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
-                        .background(Color.blue.opacity(0.1))
+                        .background(Color.tint.opacity(0.1))
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                         .onTapGesture {
                             print("URL tapped: \(url)")
@@ -76,23 +89,49 @@ struct FollowUpRow: View {
         .padding(.horizontal, 16)
         .contentShape(Rectangle())
         .onTapGesture(count: 2) {
-            onDone()
+            if !isCompleted {
+                onDone()
+            }
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            Button("Bump", systemImage: "arrow.clockwise") {
-                onBump()
+            // Delete action available for ALL follow-ups
+            Button("Delete") {
+                onDelete()
             }
-            .tint(.blue)
+            .tint(.red)
+            
+            if isCompleted {
+                // For completed items: Details only (Delete already added above)
+                Button("Details") {
+                    onDetails()
+                }
+                .tint(.secondary)
+            } else {
+                // For active items: Bump, Snooze, Details (Delete already added above)
+                Button("Bump") {
+                    onBump()
+                }
+                .tint(.blue)
 
-            Button("Snooze", systemImage: "zzz") {
-                onSnooze()
-            }
-            .tint(.orange)
+                Button("Snooze") {
+                    onSnooze()
+                }
+                .tint(.orange)
 
-            Button("Details", systemImage: "info.circle") {
-                onDetails()
+                Button("Details") {
+                    onDetails()
+                }
+                .tint(.secondary)
             }
-            .tint(.gray)
+        }
+        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+            if !isCompleted {
+                // Mark Done action on left swipe (only for active items)
+                Button("Done") {
+                    onDone()
+                }
+                .tint(.green)
+            }
         }
     }
 
