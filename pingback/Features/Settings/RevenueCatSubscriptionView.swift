@@ -3,24 +3,16 @@ import RevenueCat
 
 struct RevenueCatSubscriptionView: View {
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var themeManager: ThemeManager
+    // Removed themeManager dependency for instant theme switching
     @StateObject private var subscriptionManager = RevenueCatManager.shared
     @State private var showingCancelConfirmation = false
     @State private var showingRestoreAlert = false
     @State private var restoreSuccess = false
     
-    // Theme-aware colors
-    private var primaryColor: Color {
-        themeManager.primaryColor
-    }
-    
-    private var secondaryColor: Color {
-        themeManager.secondaryColor
-    }
+    // Use native SwiftUI colors for instant theme switching
     
     var body: some View {
-        NavigationView {
-            List {
+        List {
                 if subscriptionManager.isLoading {
                     ProgressView("Loading...")
                         .frame(maxWidth: .infinity)
@@ -43,17 +35,17 @@ struct RevenueCatSubscriptionView: View {
                 }
                 
                 SupportSection()
-            }
-            .navigationTitle("Subscription")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                    .foregroundColor(primaryColor)
+        }
+        .navigationTitle("Subscription")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("Done") {
+                    dismiss()
                 }
+                .foregroundColor(.primary)
             }
+        }
             .alert("Restore Purchases", isPresented: $showingRestoreAlert) {
                 Button("Cancel", role: .cancel) { }
                 Button("Restore") {
@@ -70,7 +62,6 @@ struct RevenueCatSubscriptionView: View {
             } message: {
                 Text(restoreSuccess ? "Your purchases have been restored successfully!" : "No previous purchases found to restore.")
             }
-        }
     }
     
     // MARK: - Active Subscription Section
@@ -135,7 +126,7 @@ struct RevenueCatSubscriptionView: View {
             Button("Restore Purchases") {
                 showingRestoreAlert = true
             }
-            .foregroundColor(primaryColor)
+            .foregroundColor(.primary)
         } footer: {
             Text("Already have a subscription? Restore your purchases to regain access to Pro features.")
         }
@@ -150,21 +141,21 @@ struct RevenueCatSubscriptionView: View {
                     UIApplication.shared.open(url)
                 }
             }
-            .foregroundColor(primaryColor)
+            .foregroundColor(.primary)
             
             Button("Privacy Policy") {
                 if let url = URL(string: "https://www.revenuecat.com/privacy") {
                     UIApplication.shared.open(url)
                 }
             }
-            .foregroundColor(primaryColor)
+            .foregroundColor(.primary)
             
             Button("Terms of Service") {
                 if let url = URL(string: "https://www.revenuecat.com/terms") {
                     UIApplication.shared.open(url)
                 }
             }
-            .foregroundColor(primaryColor)
+            .foregroundColor(.primary)
         } header: {
             Text("Support")
         }

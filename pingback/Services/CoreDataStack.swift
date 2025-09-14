@@ -217,7 +217,8 @@ final class CoreDataStack: ObservableObject {
         // For now, we'll just log and continue
         
         #if DEBUG
-        fatalError("Core Data store failed to load: \(error)")
+        print("Core Data store failed to load in DEBUG mode: \(error)")
+        // Don't crash in DEBUG mode, just log the error
         #endif
     }
 }

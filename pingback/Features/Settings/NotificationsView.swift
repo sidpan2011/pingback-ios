@@ -2,7 +2,7 @@ import SwiftUI
 
 struct NotificationsView: View {
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var themeManager: ThemeManager
+    // Removed themeManager dependency for instant theme switching
     @State private var notificationsEnabled = true
     @State private var reminderAlerts = true
     @State private var quietHoursEnabled = false
@@ -11,14 +11,10 @@ struct NotificationsView: View {
     @State private var reminderTime = 9
     @State private var hasChanges = false
     
-    // Theme-aware colors
-    private var primaryColor: Color {
-        themeManager.primaryColor
-    }
+    // Use native SwiftUI colors for instant theme switching
     
     var body: some View {
-        NavigationView {
-            List {
+        List {
                 masterToggleSection
                 if notificationsEnabled {
                     reminderSettingsSection
@@ -34,7 +30,7 @@ struct NotificationsView: View {
                     Button("Cancel") {
                         dismiss()
                     }
-                    .foregroundColor(primaryColor)
+                    .foregroundColor(.primary)
                 }
                 
                 if hasChanges {
@@ -43,7 +39,7 @@ struct NotificationsView: View {
                             saveNotificationSettings()
                         }
                         // .fontWeight(.semibold)
-                        .foregroundColor(primaryColor)
+                        .foregroundColor(.primary)
                     }
                 }
             }
@@ -53,7 +49,6 @@ struct NotificationsView: View {
             .onChange(of: quietStartHour) { _, _ in hasChanges = true }
             .onChange(of: quietEndHour) { _, _ in hasChanges = true }
             .onChange(of: reminderTime) { _, _ in hasChanges = true }
-        }
     }
     
     private var masterToggleSection: some View {
@@ -95,7 +90,7 @@ struct NotificationsView: View {
                         }
                     }
                     .pickerStyle(.menu)
-                    .accentColor(primaryColor)
+                    .accentColor(.primary)
                 }
             }
         } header: {
@@ -123,7 +118,7 @@ struct NotificationsView: View {
                         }
                     }
                     .pickerStyle(.menu)
-                    .accentColor(primaryColor)
+                    .accentColor(.primary)
                 }
                 
                 HStack {
@@ -135,7 +130,7 @@ struct NotificationsView: View {
                         }
                     }
                     .pickerStyle(.menu)
-                    .accentColor(primaryColor)
+                    .accentColor(.primary)
                 }
             }
         } header: {
@@ -176,7 +171,7 @@ struct NotificationsView: View {
             Button("Send Test Notification") {
                 sendTestNotification()
             }
-            .foregroundColor(primaryColor)
+            .foregroundColor(.primary)
         } footer: {
             Text("Test your notification settings to make sure they're working properly.")
         }

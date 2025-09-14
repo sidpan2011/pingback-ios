@@ -24,24 +24,31 @@ struct LaunchGateView: View {
                 Spacer()
                 
                 // App Icon
-                if let uiImage = UIImage(named: "AppIcon") {
-                    Image(uiImage: uiImage)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 120, height: 120)
-                        .clipShape(RoundedRectangle(cornerRadius: 20))
-                        .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
-                } else {
-                    // Fallback if app icon is not found
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(Color.blue.gradient)
-                        .frame(width: 120, height: 120)
-                        .overlay(
-                            Image(systemName: "app.fill")
-                                .font(.system(size: 50))
-                                .foregroundColor(.white)
-                        )
-                        .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
+                VStack(spacing: 16) {
+                    if let appIcon = UIImage(named: "AppIcon") {
+                        Image(uiImage: appIcon)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 120, height: 120)
+                            .clipShape(RoundedRectangle(cornerRadius: 24))
+                            .shadow(color: .black.opacity(0.2), radius: 15, x: 0, y: 8)
+                    } else {
+                        // Fallback if app icon is not found
+                        RoundedRectangle(cornerRadius: 24)
+                            .fill(Color.blue.gradient)
+                            .frame(width: 120, height: 120)
+                            .overlay(
+                                Image(systemName: "app.fill")
+                                    .font(.system(size: 50))
+                                    .foregroundColor(.white)
+                            )
+                            .shadow(color: .black.opacity(0.2), radius: 15, x: 0, y: 8)
+                    }
+                    
+                    Text("Pingback")
+                        .font(.title)
+                        .fontWeight(.bold)
+                        .foregroundColor(.primary)
                 }
                 
                 Spacer()
@@ -77,6 +84,14 @@ struct LaunchGateView: View {
                     withAnimation(.easeInOut(duration: 0.5)) {
                         showHomeView = true
                     }
+                }
+            }
+        }
+        .onChange(of: hasSeenOnboarding) { _, newValue in
+            if newValue {
+                // User just completed onboarding - go to HomeView immediately
+                withAnimation(.easeInOut(duration: 0.5)) {
+                    showHomeView = true
                 }
             }
         }

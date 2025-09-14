@@ -2,25 +2,30 @@ import SwiftUI
 
 struct AboutView: View {
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var themeManager: ThemeManager
-    
-    private var primaryColor: Color {
-        themeManager.primaryColor
-    }
+    // Removed themeManager dependency for instant theme switching
     
     var body: some View {
         ScrollView {
                 VStack(spacing: 24) {
                     // App Icon and Name
                     VStack(spacing: 16) {
-                        Image(systemName: "app.fill")
-                            .font(.system(size: 80))
-                            .foregroundColor(primaryColor)
-                            .frame(width: 120, height: 120)
-                            .background(
-                                RoundedRectangle(cornerRadius: 20)
-                                    .fill(Color.blue.opacity(0.1))
-                            )
+                        if let appIcon = UIImage(named: "AppIcon") {
+                            Image(uiImage: appIcon)
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 120, height: 120)
+                                .clipShape(RoundedRectangle(cornerRadius: 20))
+                        } else {
+                            // Fallback if app icon is not found
+                            Image(systemName: "app.fill")
+                                .font(.system(size: 80))
+                                .foregroundColor(.primary)
+                                .frame(width: 120, height: 120)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 20)
+                                        .fill(Color.blue.opacity(0.1))
+                                )
+                        }
                         
                         VStack(spacing: 4) {
                             Text("Pingback")
@@ -41,9 +46,9 @@ struct AboutView: View {
                             .font(.headline)
                             .foregroundColor(.primary)
                         
-                        Text("Build 1")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                        // Text("Build 1")
+                        //     .font(.caption)
+                        //     .foregroundColor(.secondary)
                     }
                     
                     // Description
@@ -90,30 +95,30 @@ struct AboutView: View {
                     .padding(.horizontal)
                     
                     // Legal
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Legal")
-                            .font(.headline)
-                            .foregroundColor(.primary)
+                    // VStack(alignment: .leading, spacing: 12) {
+                    //     Text("Legal")
+                    //         .font(.headline)
+                    //         .foregroundColor(.primary)
                         
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Privacy Policy")
-                                .font(.body)
-                                .foregroundColor(.blue)
-                                .onTapGesture {
-                                    // TODO: Open privacy policy
-                                }
+                    //     VStack(alignment: .leading, spacing: 8) {
+                    //         Text("Privacy Policy")
+                    //             .font(.body)
+                    //             .foregroundColor(.blue)
+                    //             .onTapGesture {
+                    //                 // TODO: Open privacy policy
+                    //             }
                             
-                            Text("Terms of Service")
-                                .font(.body)
-                                .foregroundColor(.blue)
-                                .onTapGesture {
-                                    // TODO: Open terms of service
-                                }
-                        }
-                    }
-                    .padding(.horizontal)
+                    //         Text("Terms of Service")
+                    //             .font(.body)
+                    //             .foregroundColor(.blue)
+                    //             .onTapGesture {
+                    //                 // TODO: Open terms of service
+                    //             }
+                    //     }
+                    // }
+                    // .padding(.horizontal)
                     
-                    Spacer(minLength: 20)
+                    // Spacer(minLength: 20)
                 }
         }
         .navigationTitle("About")
@@ -123,7 +128,7 @@ struct AboutView: View {
                 Button("Done") {
                     dismiss()
                 }
-                .foregroundColor(primaryColor)
+                .foregroundColor(.primary)
             }
         }
     }
@@ -132,17 +137,13 @@ struct AboutView: View {
 struct AboutFeatureRow: View {
     let icon: String
     let text: String
-    @EnvironmentObject private var themeManager: ThemeManager
-    
-    private var primaryColor: Color {
-        themeManager.primaryColor
-    }
+    // Removed themeManager dependency for instant theme switching
     
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 16, weight: .medium))
-                .foregroundColor(primaryColor)
+                .foregroundColor(.primary)
                 .frame(width: 20)
             
             Text(text)

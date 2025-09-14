@@ -19,10 +19,7 @@ struct FollowUpRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             // Left: App icon
-            Image(systemName: item.app.icon)
-                .font(.system(size: 24))
-                .foregroundStyle(.tint)
-                .frame(width: 32, height: 32)
+            AppLogoView(item.app, size: 32)
                 .padding(.top, 2)
 
             // Middle: Stacked content
@@ -43,7 +40,7 @@ struct FollowUpRow: View {
                             .padding(.vertical, 4)
                             .foregroundStyle(.secondary)
                     } else {
-                        DueBadge(date: item.dueAt)
+                        DueBadge(date: item.dueAt, status: item.status)
                     }
                 }
 
@@ -71,7 +68,7 @@ struct FollowUpRow: View {
                         }
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
-                        .background(Color.tint.opacity(0.1))
+                        .background(Color.accentColor.opacity(0.1))
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                         .onTapGesture {
                             print("URL tapped: \(url)")

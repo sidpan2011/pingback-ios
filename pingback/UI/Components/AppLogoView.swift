@@ -3,6 +3,7 @@ import SwiftUI
 struct AppLogoView: View {
     let app: AppKind
     let size: CGFloat
+    @State private var customImageExists = false
     
     init(_ app: AppKind, size: CGFloat = 24) {
         self.app = app
@@ -11,7 +12,7 @@ struct AppLogoView: View {
     
     var body: some View {
         Group {
-            if app.hasCustomLogo {
+            if app.hasCustomLogo && customImageExists {
                 // Use custom app logo
                 Image(app.logoImageName)
                     .resizable()
@@ -26,6 +27,18 @@ struct AppLogoView: View {
                     .frame(width: size, height: size)
             }
         }
+        .onAppear {
+            checkIfCustomImageExists()
+        }
+    }
+    
+    private func checkIfCustomImageExists() {
+        // Check if the custom image exists in the bundle
+        if let _ = UIImage(named: app.logoImageName) {
+            customImageExists = true
+        } else {
+            customImageExists = false
+        }
     }
 }
 
@@ -36,6 +49,7 @@ struct AppLogoView: View {
             AppLogoView(.telegram, size: 32)
             AppLogoView(.email, size: 32)
             AppLogoView(.sms, size: 32)
+            AppLogoView(.instagram, size: 32)
             AppLogoView(.other, size: 32)
         }
         
@@ -48,6 +62,7 @@ struct AppLogoView: View {
             AppLogoView(.telegram, size: 24)
             AppLogoView(.email, size: 24)
             AppLogoView(.sms, size: 24)
+            AppLogoView(.instagram, size: 24)
             AppLogoView(.other, size: 24)
         }
         

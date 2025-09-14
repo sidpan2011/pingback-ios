@@ -2,15 +2,13 @@ import SwiftUI
 
 struct GeneralFeedbackView: View {
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var themeManager: ThemeManager
+    // Removed themeManager dependency for instant theme switching
     @State private var feedbackText = ""
     @State private var feedbackType = "General"
     @State private var hasChanges = false
     @State private var showingFeedbackSent = false
     
-    private var primaryColor: Color {
-        themeManager.primaryColor
-    }
+    // Removed theme color overrides for instant theme switching
     
     let feedbackTypes = ["General", "Appreciation", "Suggestion", "Complaint", "Other"]
     
@@ -26,7 +24,7 @@ struct GeneralFeedbackView: View {
                             }
                         }
                         .pickerStyle(.menu)
-                        .accentColor(primaryColor)
+                        .accentColor(.primary)
                     }
                 } header: {
                     Text("What kind of feedback?")
@@ -77,7 +75,7 @@ struct GeneralFeedbackView: View {
                     Button("Cancel") {
                         dismiss()
                     }
-                    .foregroundColor(primaryColor)
+                    .foregroundColor(.primary)
                 }
                 
                 if hasChanges {
@@ -86,7 +84,7 @@ struct GeneralFeedbackView: View {
                             sendFeedback()
                         }
                         .fontWeight(.semibold)
-                        .foregroundColor(primaryColor)
+                        .foregroundColor(.primary)
                     }
                 }
             }
@@ -120,17 +118,13 @@ struct GeneralFeedbackView: View {
 struct FeedbackTip: View {
     let icon: String
     let text: String
-    @EnvironmentObject private var themeManager: ThemeManager
-    
-    private var primaryColor: Color {
-        themeManager.primaryColor
-    }
+    // Removed themeManager dependency for instant theme switching
     
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 16, weight: .medium))
-                .foregroundColor(primaryColor)
+                .foregroundColor(.primary)
                 .frame(width: 20)
             
             Text(text)

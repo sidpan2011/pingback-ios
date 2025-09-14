@@ -81,14 +81,14 @@ struct AddFollowUpView: View {
                                     selectedApp = app
                                 } label: {
                                     HStack {
-                                        Image(systemName: app.icon)
+                                        AppLogoView(app, size: 20)
                                         Text(app.label)
                                     }
                                 }
                             }
                         } label: {
                             HStack {
-                                Image(systemName: selectedApp.icon)
+                                AppLogoView(selectedApp, size: 20)
                                 Text(selectedApp.label)
                             }
                             .foregroundStyle(.primary)
@@ -103,8 +103,12 @@ struct AddFollowUpView: View {
                             Button("Do") { selectedType = .doIt }
                             Button("Waiting-On") { selectedType = .waitingOn }
                         } label: {
-                            Text(selectedType.title)
-                                .foregroundStyle(.primary)
+                            HStack(spacing: 4) {
+                                Image(systemName: "number")
+                                    .font(.system(size: 14))
+                                Text(selectedType.title)
+                            }
+                            .foregroundStyle(.primary)
                         }
                     }
                 }
@@ -127,7 +131,7 @@ struct AddFollowUpView: View {
                     // DATE ROW
                     HStack(alignment: .center, spacing: 12) {
                         Image(systemName: "calendar")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.primary)
                             .frame(width: 20)
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Date")
@@ -153,7 +157,7 @@ struct AddFollowUpView: View {
                     // TIME ROW
                     HStack(alignment: .center, spacing: 12) {
                         Image(systemName: "clock")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.primary)
                             .frame(width: 20)
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Time")
@@ -185,12 +189,14 @@ struct AddFollowUpView: View {
                     Button("Cancel") {
                         dismiss()
                     }
+                    .foregroundStyle(.primary)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
                         saveFollowUp()
                     }
                     .disabled(!isSaveEnabled)
+                    .foregroundStyle(!isSaveEnabled ? .secondary : .primary).fontWeight(.medium)
                 }
             }
         }
@@ -210,6 +216,7 @@ struct AddFollowUpView: View {
                         displayedComponents: .date
                     )
                     .datePickerStyle(.graphical)
+                    .accentColor(.primary)
                     .labelsHidden()
                     .padding()
                     Spacer()
@@ -219,9 +226,11 @@ struct AddFollowUpView: View {
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Cancel") { showDateSheet = false }
+                            .foregroundStyle(.primary)
                     }
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Done") { showDateSheet = false }
+                            .foregroundStyle(.primary).fontWeight(.medium)
                     }
                 }
             }
@@ -237,6 +246,7 @@ struct AddFollowUpView: View {
                         displayedComponents: .hourAndMinute
                     )
                     .datePickerStyle(.wheel)
+                    .accentColor(.primary)
                     .labelsHidden()
                     .padding(.top, 12)
                     Spacer()
@@ -246,9 +256,11 @@ struct AddFollowUpView: View {
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Cancel") { showTimeSheet = false }
+                            .foregroundStyle(.primary)
                     }
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Done") { showTimeSheet = false }
+                            .foregroundStyle(.primary).fontWeight(.medium)
                     }
                 }
             }

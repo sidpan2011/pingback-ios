@@ -9,7 +9,8 @@ struct HomeView: View {
     @State private var selectedItem: FollowUp?
     @State private var showSettingsSheet: Bool = false
     @State private var isCompletedSectionExpanded = false
-    @EnvironmentObject private var themeManager: ThemeManager
+    @FocusState private var isSearchFocused: Bool
+    // Removed themeManager dependency for instant theme switching
 
     enum Filter: String, CaseIterable { 
         case all, doIt, waitingOn, completed 
@@ -46,7 +47,6 @@ struct HomeView: View {
                 listContent
             }
             .toolbar(.hidden, for: .navigationBar)
-            .searchable(text: $query, prompt: "Search follow-ups")
             .safeAreaInset(edge: .bottom) {
                 HStack {
                     Spacer()
@@ -75,6 +75,7 @@ struct HomeView: View {
             }
             .sheet(isPresented: $showSettingsSheet) {
                 SettingsSheet()
+                    .environmentObject(userProfileStore)
             }
             .onAppear {
                 print("🏠 HomeView: View appeared")
@@ -97,9 +98,10 @@ struct HomeView: View {
                 showSettingsSheet = true
             } label: {
                 ZStack(alignment: .topTrailing) {
-                    Image(systemName: "gearshape")
+                    Image(systemName: "ellipsis")
                         .font(.system(size: 22, weight: .medium))
                         .foregroundStyle(.primary)
+                        .rotationEffect(.degrees(90))
                     
                     // Pending badge for incomplete profile
                     if userProfileStore.profile?.isProfileIncomplete ?? true {
@@ -111,7 +113,7 @@ struct HomeView: View {
                                     .font(.system(size: 10, weight: .bold))
                                     .foregroundColor(.white)
                             )
-                            .offset(x: 6, y: -6)
+                            .offset(x: 6, y: -8)
                     }
                 }
             }
@@ -121,14 +123,42 @@ struct HomeView: View {
 
     private var searchField: some View {
         HStack {
-            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-            TextField("Search", text: $query)
-                .textInputAutocapitalization(.never)
-                .disableAutocorrection(true)
+            HStack {
+                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                TextField("Search", text: $query)
+                    .textInputAutocapitalization(.never)
+                    .disableAutocorrection(true)
+                    .focused($isSearchFocused)
+                
+                // Clear button (X) when there's text
+                if !query.isEmpty {
+                    Button(action: {
+                        query = ""
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(10)
+            .background(Color(.secondarySystemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .onTapGesture {
+                isSearchFocused = true
+            }
+            
+            // Cancel button (appears when search is focused)
+            if isSearchFocused {
+                Button("Cancel") {
+                    isSearchFocused = false
+                    query = ""
+                }
+                .foregroundColor(.primary)
+                .transition(.move(edge: .trailing).combined(with: .opacity))
+            }
         }
-        .padding(10)
-        .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .animation(.easeInOut(duration: 0.2), value: isSearchFocused)
     }
 
     private var filterChips: some View {
@@ -147,9 +177,18 @@ struct HomeView: View {
                 .font(.system(size: 16))
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
-                .background(isSelected ? Color.accentColor.opacity(0.15) : Color(.secondarySystemBackground))
-                .foregroundStyle(isSelected ? Color.accentColor : .primary)
+                .background(isSelected ? Color.primary.opacity(0.1) : Color(.secondarySystemBackground))
+                .foregroundStyle(.primary)
                 .clipShape(Capsule())
+                .overlay(
+                    // Add border only for selected chips
+                    Group {
+                        if isSelected {
+                            Capsule()
+                                .stroke(Color.primary, lineWidth: 1)
+                        }
+                    }
+                )
         }
         .buttonStyle(.plain)
     }
@@ -317,8 +356,8 @@ struct HomeView: View {
         let base: [FollowUp] = {
             switch selectedFilter {
             case .all: return store.items.filter { $0.status != .done } // Exclude completed from main list
-            case .doIt: return store.items.filter { $0.type == .doIt && $0.status == .open }
-            case .waitingOn: return store.items.filter { $0.type == .waitingOn && $0.status == .open }
+            case .doIt: return store.items.filter { $0.type == .doIt && ($0.status == .open || $0.status == .snoozed) }
+            case .waitingOn: return store.items.filter { $0.type == .waitingOn && ($0.status == .open || $0.status == .snoozed) }
             case .completed: return store.items.filter { $0.status == .done }
             }
         }()
@@ -458,8 +497,12 @@ struct HomeView: View {
 
 struct SettingsSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var themeManager: ThemeManager
+    @EnvironmentObject private var userProfileStore: UserProfileStore
     
     var body: some View {
         SettingsSheetView()
+            .environmentObject(themeManager)
+            .environmentObject(userProfileStore)
     }
 }

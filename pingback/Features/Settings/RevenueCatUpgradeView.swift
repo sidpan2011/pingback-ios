@@ -3,155 +3,147 @@ import RevenueCat
 
 struct RevenueCatUpgradeView: View {
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var themeManager: ThemeManager
     @StateObject private var subscriptionManager = RevenueCatManager.shared
     @State private var selectedPackage: Package?
     @State private var isPurchasing = false
     
-    // Theme-aware colors
-    private var primaryColor: Color {
-        themeManager.primaryColor
-    }
-    
     var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(spacing: 24) {
-                    // Header
+        ScrollView {
+            VStack(spacing: 24) {
+                // Header
+                VStack(spacing: 16) {
+                    Image(systemName: "crown.fill")
+                        .font(.system(size: 60))
+                        .foregroundColor(.yellow)
+                    
+                    Text("Upgrade to Pro")
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
+                        .foregroundColor(.primary)
+                    
+                    Text("Unlock all premium features and take your productivity to the next level")
+                        .font(.body)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                }
+                .padding(.top, 20)
+                
+                // Features List
+                VStack(alignment: .leading, spacing: 16) {
+                    FeatureRow(icon: "infinity", title: "Unlimited Follow-ups", description: "Create as many follow-ups as you need")
+                    FeatureRow(icon: "bell.fill", title: "Advanced Notifications", description: "Customize notification timing and frequency")
+                    FeatureRow(icon: "chart.bar.fill", title: "Analytics & Insights", description: "Track your follow-up success rates")
+                    FeatureRow(icon: "icloud.fill", title: "Cloud Sync", description: "Sync across all your devices")
+                    FeatureRow(icon: "paintbrush.fill", title: "Custom Themes", description: "Personalize your app experience")
+                    FeatureRow(icon: "headphones", title: "Priority Support", description: "Get help when you need it most")
+                }
+                .padding(.horizontal)
+                
+                // Pricing Cards
+                if subscriptionManager.hasOfferings {
                     VStack(spacing: 16) {
-                        Image(systemName: "crown.fill")
-                            .font(.system(size: 60))
-                            .foregroundColor(.yellow)
+                        if let monthly = subscriptionManager.monthlyPackage {
+                            PricingCard(
+                                package: monthly,
+                                isSelected: selectedPackage?.identifier == monthly.identifier,
+                                isPopular: false
+                            ) {
+                                selectedPackage = monthly
+                            }
+                        }
                         
-                        Text("Upgrade to Pro")
-                            .font(.largeTitle)
-                            .fontWeight(.bold)
-                            .foregroundColor(primaryColor)
-                        
-                        Text("Unlock all premium features and take your productivity to the next level")
-                            .font(.body)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal)
-                    }
-                    .padding(.top, 20)
-                    
-                    // Features List
-                    VStack(alignment: .leading, spacing: 16) {
-                        FeatureRow(icon: "infinity", title: "Unlimited Follow-ups", description: "Create as many follow-ups as you need")
-                        FeatureRow(icon: "bell.fill", title: "Advanced Notifications", description: "Customize notification timing and frequency")
-                        FeatureRow(icon: "chart.bar.fill", title: "Analytics & Insights", description: "Track your follow-up success rates")
-                        FeatureRow(icon: "icloud.fill", title: "Cloud Sync", description: "Sync across all your devices")
-                        FeatureRow(icon: "paintbrush.fill", title: "Custom Themes", description: "Personalize your app experience")
-                        FeatureRow(icon: "headphones", title: "Priority Support", description: "Get help when you need it most")
+                        if let yearly = subscriptionManager.yearlyPackage {
+                            PricingCard(
+                                package: yearly,
+                                isSelected: selectedPackage?.identifier == yearly.identifier,
+                                isPopular: true
+                            ) {
+                                selectedPackage = yearly
+                            }
+                        }
                     }
                     .padding(.horizontal)
-                    
-                    // Pricing Cards
-                    if subscriptionManager.hasOfferings {
-                        VStack(spacing: 16) {
-                            if let monthly = subscriptionManager.monthlyPackage {
-                                PricingCard(
-                                    package: monthly,
-                                    isSelected: selectedPackage?.identifier == monthly.identifier,
-                                    isPopular: false
-                                ) {
-                                    selectedPackage = monthly
-                                }
-                            }
-                            
-                            if let yearly = subscriptionManager.yearlyPackage {
-                                PricingCard(
-                                    package: yearly,
-                                    isSelected: selectedPackage?.identifier == yearly.identifier,
-                                    isPopular: true
-                                ) {
-                                    selectedPackage = yearly
-                                }
-                            }
-                        }
-                        .padding(.horizontal)
-                    }
-                    
-                    // Purchase Button
-                    if let package = selectedPackage {
-                        Button(action: {
-                            Task {
-                                isPurchasing = true
-                                let success = await subscriptionManager.purchase(package: package)
-                                isPurchasing = false
-                                if success {
-                                    dismiss()
-                                }
-                            }
-                        }) {
-                            HStack {
-                                if isPurchasing {
-                                    ProgressView()
-                                        .scaleEffect(0.8)
-                                        .foregroundColor(.white)
-                                } else {
-                                    Text("Start Free Trial")
-                                        .fontWeight(.semibold)
-                                }
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.blue)
-                            .foregroundColor(.white)
-                            .cornerRadius(12)
-                        }
-                        .disabled(isPurchasing || subscriptionManager.isLoading)
-                        .padding(.horizontal)
-                    }
-                    
-                    // Restore Purchases
-                    Button("Restore Purchases") {
+                }
+                
+                // Purchase Button
+                if let package = selectedPackage {
+                    Button(action: {
                         Task {
-                            await subscriptionManager.restorePurchases()
-                        }
-                    }
-                    .foregroundColor(.blue)
-                    .padding(.bottom, 20)
-                    
-                    // Terms and Privacy
-                    VStack(spacing: 8) {
-                        Text("By subscribing, you agree to our Terms of Service and Privacy Policy")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                        
-                        HStack(spacing: 20) {
-                            Button("Terms of Service") {
-                                if let url = URL(string: "https://www.revenuecat.com/terms") {
-                                    UIApplication.shared.open(url)
-                                }
+                            isPurchasing = true
+                            let success = await subscriptionManager.purchase(package: package)
+                            isPurchasing = false
+                            if success {
+                                dismiss()
                             }
-                            .font(.caption)
-                            .foregroundColor(.blue)
-                            
-                            Button("Privacy Policy") {
-                                if let url = URL(string: "https://www.revenuecat.com/privacy") {
-                                    UIApplication.shared.open(url)
-                                }
-                            }
-                            .font(.caption)
-                            .foregroundColor(.blue)
                         }
+                    }) {
+                        HStack {
+                            if isPurchasing {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                                    .foregroundColor(Color(UIColor.systemBackground))
+                            } else {
+                                Text("Start Free Trial")
+                                    .fontWeight(.semibold)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.primary)
+                        .foregroundColor(Color(UIColor.systemBackground))
+                        .cornerRadius(12)
                     }
+                    .disabled(isPurchasing || subscriptionManager.isLoading)
                     .padding(.horizontal)
-                    .padding(.bottom, 20)
                 }
-            }
-            .navigationTitle("Upgrade")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Close") {
-                        dismiss()
+                
+                // Restore Purchases
+                Button("Restore Purchases") {
+                    Task {
+                        await subscriptionManager.restorePurchases()
                     }
-                    .foregroundColor(primaryColor)
                 }
+                .foregroundColor(.blue)
+                .padding(.bottom, 20)
+                
+                // Terms and Privacy
+                VStack(spacing: 8) {
+                    Text("By subscribing, you agree to our Terms of Service and Privacy Policy")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                    
+                    HStack(spacing: 20) {
+                        Button("Terms of Service") {
+                            if let url = URL(string: "https://www.revenuecat.com/terms") {
+                                UIApplication.shared.open(url)
+                            }
+                        }
+                        .font(.caption)
+                        .foregroundColor(.blue)
+                        
+                        Button("Privacy Policy") {
+                            if let url = URL(string: "https://www.revenuecat.com/privacy") {
+                                UIApplication.shared.open(url)
+                            }
+                        }
+                        .font(.caption)
+                        .foregroundColor(.blue)
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.bottom, 20)
+            }
+        }
+        .navigationTitle("Upgrade")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("Close") {
+                    dismiss()
+                }
+                .foregroundColor(.primary)
             }
         }
         .onAppear {
@@ -246,7 +238,7 @@ struct PricingCard: View {
                     }
                 }
                 
-                if package.packageType == .annual, let monthlyPrice = subscriptionManager.monthlyPriceString {
+                if package.packageType == .annual, let _ = subscriptionManager.monthlyPriceString {
                     Text("\(subscriptionManager.yearlyPerMonthPriceString ?? "")/month")
                         .font(.caption)
                         .foregroundColor(.green)
