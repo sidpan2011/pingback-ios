@@ -15,3 +15,6 @@ pingback.xcodeproj/project.xcworkspace/xcuserdata/
 
 # macOS
 .DS_Store
+
+# Tests
+Tests/
