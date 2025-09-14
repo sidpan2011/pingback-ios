@@ -15,6 +15,7 @@ struct SettingsSheetView: View {
     @State private var showingBackup = false
     @State private var showingHelp = false
     @State private var showingManageAccount = false
+    @State private var showingRevenueCatDebug = false
     
     // Removed theme color overrides for instant theme switching
     
@@ -124,24 +125,24 @@ struct SettingsSheetView: View {
                     }
                 }
                 
-                // Appearance Section
-                Section("Appearance") {
-                    Button(action: { showingTheme = true }) {
-                        HStack {
-                            Image(systemName: "paintbrush")
-                                .foregroundColor(.primary)
-                                .frame(width: 24, height: 24)
-                            Text("Theme")
-                                .foregroundColor(.primary)
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(Color.secondary.opacity(0.6))
-                        }
-                        // .padding(.vertical, 8)
-                        .contentShape(Rectangle())
-                    }
-                }
+                // Appearance Section - Commented out since theme syncs perfectly with system
+                // Section("Appearance") {
+                //     Button(action: { showingTheme = true }) {
+                //         HStack {
+                //             Image(systemName: "paintbrush")
+                //                 .foregroundColor(.primary)
+                //                 .frame(width: 24, height: 24)
+                //             Text("Theme")
+                //                 .foregroundColor(.primary)
+                //             Spacer()
+                //             Image(systemName: "chevron.right")
+                //                 .font(.system(size: 14, weight: .medium))
+                //                 .foregroundColor(Color.secondary.opacity(0.6))
+                //         }
+                //         // .padding(.vertical, 8)
+                //         .contentShape(Rectangle())
+                //     }
+                // }
                 
                 // Notifications Section
                 Section("Notifications") {
@@ -200,6 +201,27 @@ struct SettingsSheetView: View {
                     }
                 }
                 
+                // Debug Section (only in debug builds)
+                #if DEBUG
+                Section("Debug") {
+                    Button(action: { showingRevenueCatDebug = true }) {
+                        HStack {
+                            Image(systemName: "wrench.and.screwdriver")
+                                .foregroundColor(.primary)
+                                .frame(width: 24, height: 24)
+                            Text("RevenueCat Debug")
+                                .foregroundColor(.primary)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(Color.secondary.opacity(0.6))
+                        }
+                        // .padding(.vertical, 8)
+                        .contentShape(Rectangle())
+                    }
+                }
+                #endif
+                
                 // Logout Section
                 // TODO: Uncomment when sign out functionality is ready
                 /*
@@ -235,12 +257,12 @@ struct SettingsSheetView: View {
             }
             .sheet(isPresented: $showingUpgrade) {
                 NavigationView {
-                    UpgradeView()
+                    RevenueCatUpgradeView()
                 }
             }
             .sheet(isPresented: $showingSubscription) {
                 NavigationView {
-                    SubscriptionView()
+                    RevenueCatSubscriptionView()
                 }
             }
             // TODO: Uncomment when sign out functionality is ready
@@ -258,12 +280,13 @@ struct SettingsSheetView: View {
                         .environmentObject(themeManager)
                 }
             }
-            .sheet(isPresented: $showingTheme) {
-                NavigationView {
-                    ThemeView()
-                        .environmentObject(themeManager)
-                }
-            }
+            // Theme sheet commented out since theme syncs perfectly with system
+            // .sheet(isPresented: $showingTheme) {
+            //     NavigationView {
+            //         ThemeView()
+            //             .environmentObject(themeManager)
+            //     }
+            // }
             .sheet(isPresented: $showingNotifications) {
                 NavigationView {
                     NotificationsView()
@@ -288,6 +311,9 @@ struct SettingsSheetView: View {
                         .environmentObject(themeManager)
                         .environmentObject(userProfileStore)
                 }
+            }
+            .sheet(isPresented: $showingRevenueCatDebug) {
+                RevenueCatDebugView()
             }
         }
     }

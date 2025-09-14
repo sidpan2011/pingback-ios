@@ -1,0 +1,17 @@
+# Xcode / build
+build/
+DerivedData/
+
+# Workspace/user state
+*.xcuserstate
+*.xcuserdata/
+*.xccheckout
+project.xcworkspace/xcuserdata/
+pingback.xcodeproj/project.xcworkspace/xcuserdata/
+
+# SwiftPM cache
+.swiftpm/
+# (SwiftPM checkouts live under build/SourcePackages, already ignored via build/)
+
+# macOS
+.DS_Store

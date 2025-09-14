@@ -2,7 +2,7 @@ import SwiftUI
 
 struct GeneralFeedbackView: View {
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var themeManager: ThemeManager
+    // Removed themeManager dependency for instant theme switching
     @State private var feedbackText = ""
     @State private var feedbackType = "General"
     @State private var hasChanges = false

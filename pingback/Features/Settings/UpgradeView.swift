@@ -117,17 +117,18 @@ struct UpgradeView: View {
             Divider()
             Button(action: handleContinue) {
                 Text("Continue")
-                    .font(.headline).bold()
-                    .foregroundColor(.secondary)
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 42)
-                    .background(.primary)
-                    .cornerRadius(8)
+                    .frame(height: 50)
+                    .background(Color.primary)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
             }
             .disabled(subscriptionManager.isLoading)
             .overlay(
                 Group {
-                    if subscriptionManager.isLoading { ProgressView().tint(.secondary) }
+                    if subscriptionManager.isLoading { ProgressView().tint(Color(UIColor.systemBackground)) }
                 }
             )
             .padding(.horizontal, 20)

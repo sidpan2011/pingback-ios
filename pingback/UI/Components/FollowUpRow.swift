@@ -40,7 +40,7 @@ struct FollowUpRow: View {
                             .padding(.vertical, 4)
                             .foregroundStyle(.secondary)
                     } else {
-                        DueBadge(date: item.dueAt)
+                        DueBadge(date: item.dueAt, status: item.status)
                     }
                 }
 

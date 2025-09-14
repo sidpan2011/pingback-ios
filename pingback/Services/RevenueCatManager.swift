@@ -9,6 +9,8 @@ class RevenueCatManager: NSObject, ObservableObject {
     @Published var isPro: Bool = false
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
+    @Published var isSDKConnected: Bool = false
+    @Published var connectionStatus: String = "Checking..."
     
     private static var _shared: RevenueCatManager?
     static var shared: RevenueCatManager {
@@ -58,8 +60,7 @@ class RevenueCatManager: NSObject, ObservableObject {
         }
         
         // Configure RevenueCat with your API key
-        // You'll need to replace this with your actual RevenueCat API key
-        Purchases.configure(withAPIKey: "your_revenuecat_api_key_here")
+        Purchases.configure(withAPIKey: RevenueCatConfiguration.apiKey)
         
         // Set up logging for debugging
         #if DEBUG
@@ -74,17 +75,25 @@ class RevenueCatManager: NSObject, ObservableObject {
         // Skip if in preview mode or RevenueCat not configured
         guard ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" && Purchases.isConfigured else {
             isLoading = false
+            connectionStatus = "Preview mode or SDK not configured"
             return
         }
         
         isLoading = true
         errorMessage = nil
+        connectionStatus = "Loading offerings..."
         
         do {
             let offerings = try await Purchases.shared.offerings()
             self.offerings = offerings
+            self.isSDKConnected = true
+            self.connectionStatus = "Connected ✅"
+            print("✅ RevenueCat offerings loaded: \(offerings.current?.availablePackages.count ?? 0) packages")
         } catch {
             self.errorMessage = "Failed to load offerings: \(error.localizedDescription)"
+            self.isSDKConnected = false
+            self.connectionStatus = "Failed to load offerings ❌"
+            print("❌ RevenueCat offerings failed: \(error.localizedDescription)")
         }
         
         isLoading = false
@@ -93,6 +102,7 @@ class RevenueCatManager: NSObject, ObservableObject {
     func checkSubscriptionStatus() async {
         // Skip if in preview mode or RevenueCat not configured
         guard ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" && Purchases.isConfigured else {
+            connectionStatus = "Preview mode or SDK not configured"
             return
         }
         
@@ -100,8 +110,14 @@ class RevenueCatManager: NSObject, ObservableObject {
             let customerInfo = try await Purchases.shared.customerInfo()
             self.customerInfo = customerInfo
             self.isPro = customerInfo.entitlements["pro"]?.isActive == true
+            self.isSDKConnected = true
+            print("✅ RevenueCat customer info loaded for user: \(customerInfo.originalAppUserId)")
+            print("   - Pro status: \(isPro)")
+            print("   - Active entitlements: \(customerInfo.entitlements.active.keys)")
         } catch {
             self.errorMessage = "Failed to check subscription status: \(error.localizedDescription)"
+            self.isSDKConnected = false
+            print("❌ RevenueCat customer info failed: \(error.localizedDescription)")
         }
     }
     

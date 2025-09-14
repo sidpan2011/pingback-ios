@@ -82,7 +82,7 @@ struct RevenueCatUpgradeView: View {
                             if isPurchasing {
                                 ProgressView()
                                     .scaleEffect(0.8)
-                                    .foregroundColor(.white)
+                                    .foregroundColor(Color(UIColor.systemBackground))
                             } else {
                                 Text("Start Free Trial")
                                     .fontWeight(.semibold)
@@ -90,8 +90,8 @@ struct RevenueCatUpgradeView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.blue)
-                        .foregroundColor(.white)
+                        .background(Color.primary)
+                        .foregroundColor(Color(UIColor.systemBackground))
                         .cornerRadius(12)
                     }
                     .disabled(isPurchasing || subscriptionManager.isLoading)
@@ -238,7 +238,7 @@ struct PricingCard: View {
                     }
                 }
                 
-                if package.packageType == .annual, let monthlyPrice = subscriptionManager.monthlyPriceString {
+                if package.packageType == .annual, let _ = subscriptionManager.monthlyPriceString {
                     Text("\(subscriptionManager.yearlyPerMonthPriceString ?? "")/month")
                         .font(.caption)
                         .foregroundColor(.green)
