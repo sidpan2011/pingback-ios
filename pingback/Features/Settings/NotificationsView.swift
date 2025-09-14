@@ -1,54 +1,101 @@
 import SwiftUI
+import UserNotifications
 
 struct NotificationsView: View {
     @Environment(\.dismiss) private var dismiss
-    // Removed themeManager dependency for instant theme switching
-    @State private var notificationsEnabled = true
-    @State private var reminderAlerts = true
-    @State private var quietHoursEnabled = false
-    @State private var quietStartHour = 22
-    @State private var quietEndHour = 8
-    @State private var reminderTime = 9
+    @StateObject private var notificationManager = NotificationManager.shared
     @State private var hasChanges = false
+    @State private var showingPermissionAlert = false
+    @State private var showingSettingsAlert = false
     
     // Use native SwiftUI colors for instant theme switching
     
     var body: some View {
         List {
+            if notificationManager.authorizationStatus == .denied {
+                permissionDeniedSection
+            } else {
                 masterToggleSection
-                if notificationsEnabled {
+                if notificationManager.isEnabled {
                     reminderSettingsSection
                     quietHoursSection
-                    notificationTypesSection
                     testNotificationSection
+                    debugSection
                 }
             }
-            .navigationTitle("Notifications")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
+        }
+        .navigationTitle("Notifications")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button("Cancel") {
+                    dismiss()
+                }
+                .foregroundColor(.primary)
+            }
+            
+            if hasChanges {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Save") {
+                        saveNotificationSettings()
                     }
                     .foregroundColor(.primary)
                 }
-                
-                if hasChanges {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button("Save") {
-                            saveNotificationSettings()
-                        }
-                        // .fontWeight(.semibold)
-                        .foregroundColor(.primary)
-                    }
+            }
+        }
+        .alert("Notification Permission Required", isPresented: $showingPermissionAlert) {
+            Button("Settings") {
+                showingSettingsAlert = true
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("To receive follow-up reminders, please enable notifications in Settings.")
+        }
+        .alert("Open Settings", isPresented: $showingSettingsAlert) {
+            Button("Open Settings") {
+                if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(settingsUrl)
                 }
             }
-            .onChange(of: notificationsEnabled) { _, _ in hasChanges = true }
-            .onChange(of: reminderAlerts) { _, _ in hasChanges = true }
-            .onChange(of: quietHoursEnabled) { _, _ in hasChanges = true }
-            .onChange(of: quietStartHour) { _, _ in hasChanges = true }
-            .onChange(of: quietEndHour) { _, _ in hasChanges = true }
-            .onChange(of: reminderTime) { _, _ in hasChanges = true }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Go to Settings > Pingback > Notifications to enable notifications.")
+        }
+        .task {
+            await notificationManager.checkAuthorizationStatus()
+        }
+        .onChange(of: notificationManager.dueRemindersEnabled) { _, _ in hasChanges = true }
+        .onChange(of: notificationManager.overdueAlertsEnabled) { _, _ in hasChanges = true }
+        .onChange(of: notificationManager.creationNudgeEnabled) { _, _ in hasChanges = true }
+        .onChange(of: notificationManager.quietHoursEnabled) { _, _ in hasChanges = true }
+        .onChange(of: notificationManager.quietHoursStart) { _, _ in hasChanges = true }
+        .onChange(of: notificationManager.quietHoursEnd) { _, _ in hasChanges = true }
+    }
+    
+    private var permissionDeniedSection: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Image(systemName: "bell.slash")
+                        .foregroundColor(.orange)
+                        .font(.title2)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Notifications Disabled")
+                            .font(.headline)
+                        Text("Enable notifications to receive follow-up reminders")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                Button("Enable Notifications") {
+                    showingPermissionAlert = true
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .padding(.vertical, 8)
+        }
     }
     
     private var masterToggleSection: some View {
@@ -57,46 +104,55 @@ struct NotificationsView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Notifications")
                     
-                    // Text(notificationsEnabled ? "All notifications are enabled" : "All notifications are disabled")
-                    //     .font(.subheadline)
-                    //     .foregroundColor(.secondary)
+                    Text(notificationManager.authorizationStatus == .authorized ? (notificationManager.dueRemindersEnabled ? "Enabled" : "Disabled") : "Tap to enable")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
                 }
                 
                 Spacer()
                 
-                Toggle("", isOn: $notificationsEnabled)
+                if notificationManager.authorizationStatus == .notDetermined {
+                    Button("Enable") {
+                        Task {
+                            await requestNotificationPermission()
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                } else if notificationManager.authorizationStatus == .authorized {
+                    Toggle("", isOn: $notificationManager.dueRemindersEnabled)
+                } else {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.red)
+                }
             }
-            // .padding(.vertical, 8)
         } footer: {
-            Text("Turn off to disable all follow-up notifications.")
+            Text("Receive reminders for your follow-ups at the right time.")
         }
     }
     
     private var reminderSettingsSection: some View {
         Section {
             HStack {
-                Text("Reminder Alerts")
+                Text("Due Date Reminders")
                 Spacer()
-                Toggle("", isOn: $reminderAlerts)
+                Toggle("", isOn: $notificationManager.dueRemindersEnabled)
             }
             
-            if reminderAlerts {
-                HStack {
-                    Text("Daily Reminder Time")
-                    Spacer()
-                    Picker("", selection: $reminderTime) {
-                        ForEach(6...22, id: \.self) { hour in
-                            Text(formatHour(hour)).tag(hour)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .accentColor(.primary)
-                }
+            HStack {
+                Text("Overdue Alerts")
+                Spacer()
+                Toggle("", isOn: $notificationManager.overdueAlertsEnabled)
+            }
+            
+            HStack {
+                Text("Creation Nudge")
+                Spacer()
+                Toggle("", isOn: $notificationManager.creationNudgeEnabled)
             }
         } header: {
-            Text("Reminders")
+            Text("Reminder Types")
         } footer: {
-            Text("Get reminded about your follow-ups at the specified time.")
+            Text("Choose which types of reminders you want to receive. Creation nudges appear briefly after creating a follow-up.")
         }
     }
     
@@ -105,75 +161,57 @@ struct NotificationsView: View {
             HStack {
                 Text("Enable Quiet Hours")
                 Spacer()
-                Toggle("", isOn: $quietHoursEnabled)
+                Toggle("", isOn: $notificationManager.quietHoursEnabled)
             }
             
-            if quietHoursEnabled {
-                HStack {
-                    Text("Start Time")
-                    Spacer()
-                    Picker("Start Time", selection: $quietStartHour) {
-                        ForEach(18...23, id: \.self) { hour in
-                            Text(formatHour(hour)).tag(hour)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .accentColor(.primary)
-                }
+            if notificationManager.quietHoursEnabled {
+                DatePicker("Start Time", selection: $notificationManager.quietHoursStart, displayedComponents: .hourAndMinute)
+                    .datePickerStyle(.compact)
                 
-                HStack {
-                    Text("End Time")
-                    Spacer()
-                    Picker("End Time", selection: $quietEndHour) {
-                        ForEach(6...12, id: \.self) { hour in
-                            Text(formatHour(hour)).tag(hour)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .accentColor(.primary)
-                }
+                DatePicker("End Time", selection: $notificationManager.quietHoursEnd, displayedComponents: .hourAndMinute)
+                    .datePickerStyle(.compact)
             }
         } header: {
             Text("Quiet Hours")
         } footer: {
-            Text("No notifications will be sent during quiet hours.")
+            Text("Notifications scheduled during quiet hours will be delayed until the end time. Respects Do Not Disturb and Focus modes.")
         }
     }
     
-    private var notificationTypesSection: some View {
+    private var debugSection: some View {
         Section {
-            HStack {
-                Text("Due Date Reminders")
-                Spacer()
-                Toggle("", isOn: .constant(true))
+            Button("Clear All Notifications") {
+                UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+                UNUserNotificationCenter.current().removeAllDeliveredNotifications()
+                Task {
+                    try? await UNUserNotificationCenter.current().setBadgeCount(0)
+                }
             }
+            .foregroundColor(.red)
             
-            HStack {
-                Text("Overdue Alerts")
-                Spacer()
-                Toggle("", isOn: .constant(true))
+            Button("Reschedule All Notifications") {
+                Task {
+                    await notificationManager.rescheduleAllNotifications()
+                }
             }
-            
-            HStack {
-                Text("Snooze Reminders")
-                Spacer()
-                Toggle("", isOn: .constant(true))
-            }
+            .foregroundColor(.primary)
         } header: {
-            Text("Notification Types")
+            Text("Debug Actions")
         } footer: {
-            Text("Choose which types of notifications you want to receive.")
+            Text("Use these options to manage and reset your notification state.")
         }
     }
     
     private var testNotificationSection: some View {
         Section {
             Button("Send Test Notification") {
-                sendTestNotification()
+                Task {
+                    await sendTestNotification()
+                }
             }
             .foregroundColor(.primary)
         } footer: {
-            Text("Test your notification settings to make sure they're working properly.")
+            Text("Test your notification settings. The test notification will appear in 3 seconds.")
         }
     }
     
@@ -189,18 +227,40 @@ struct NotificationsView: View {
         }
     }
     
-    private func sendTestNotification() {
+    private func requestNotificationPermission() async {
+        let granted = await notificationManager.requestPermission()
+        if !granted {
+            showingPermissionAlert = true
+        }
+    }
+    
+    private func sendTestNotification() async {
         let impactFeedback = UIImpactFeedbackGenerator(style: .light)
         impactFeedback.impactOccurred()
         
-        // In a real app, you would schedule a test notification
-        // UNUserNotificationCenter.current().add(...)
+        let content = UNMutableNotificationContent()
+        content.title = "Test Notification"
+        content.body = "Your notification settings are working correctly! 🎉"
+        content.sound = .default
+        
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 3, repeats: false)
+        let request = UNNotificationRequest(identifier: "test_notification", content: content, trigger: trigger)
+        
+        do {
+            try await UNUserNotificationCenter.current().add(request)
+        } catch {
+            print("Failed to send test notification: \(error)")
+        }
     }
     
     private func saveNotificationSettings() {
-        // Save notification settings
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred()
+        
+        // Settings are automatically saved via @Published properties in NotificationManager
+        Task {
+            await notificationManager.rescheduleAllNotifications()
+        }
         
         hasChanges = false
         dismiss()

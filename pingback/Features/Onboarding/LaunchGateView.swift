@@ -45,10 +45,10 @@ struct LaunchGateView: View {
                             .shadow(color: .black.opacity(0.2), radius: 15, x: 0, y: 8)
                     }
                     
-                    Text("Pingback")
-                        .font(.title)
-                        .fontWeight(.bold)
-                        .foregroundColor(.primary)
+                    // Text("Pingback")
+                    //     .font(.title)
+                    //     .fontWeight(.bold)
+                    //     .foregroundColor(.primary)
                 }
                 
                 Spacer()
@@ -64,7 +64,7 @@ struct LaunchGateView: View {
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .frame(height: 50)
-                            .background(Color.blue)
+                            .background(Color.primary)
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
                     .padding(.horizontal, 32)

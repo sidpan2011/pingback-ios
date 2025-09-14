@@ -216,7 +216,6 @@ struct SettingsSheetView: View {
                                 .font(.system(size: 14, weight: .medium))
                                 .foregroundColor(Color.secondary.opacity(0.6))
                         }
-                        // .padding(.vertical, 8)
                         .contentShape(Rectangle())
                     }
                 }

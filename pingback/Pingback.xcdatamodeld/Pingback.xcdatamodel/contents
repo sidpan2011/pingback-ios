@@ -18,6 +18,11 @@
         <attribute name="status" optional="NO" attributeType="String"/>
         <attribute name="lastNudgedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="deletedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="shouldNotify" optional="NO" attributeType="Boolean" usesScalarValueType="YES" defaultValueString="YES"/>
+        <attribute name="snoozedUntil" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="lastScheduledAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="creationTimeZone" optional="YES" attributeType="String"/>
+        <attribute name="lastOverdueNotifiedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
     </entity>
     <entity name="CDUserProfile" representedClassName="CDUserProfile" syncable="YES" codeGenerationType="class">
         <attribute name="id" optional="NO" attributeType="UUID" usesScalarValueType="NO"/>
