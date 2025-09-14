@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct SettingsSheetView: View {
-    @StateObject private var userProfileStore = UserProfileStore()
+    @EnvironmentObject private var userProfileStore: UserProfileStore
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var store: FollowUpStore
     @EnvironmentObject private var themeManager: ThemeManager
@@ -16,14 +16,7 @@ struct SettingsSheetView: View {
     @State private var showingHelp = false
     @State private var showingManageAccount = false
     
-    // Theme-aware colors
-    private var primaryColor: Color {
-        themeManager.primaryColor
-    }
-    
-    private var secondaryColor: Color {
-        themeManager.secondaryColor
-    }
+    // Removed theme color overrides for instant theme switching
     
     var body: some View {
         NavigationView {
@@ -34,7 +27,7 @@ struct SettingsSheetView: View {
                     Button(action: { showingManageAccount = true }) {
                         HStack {
                             Image(systemName: "person.circle")
-                                .foregroundColor(primaryColor)
+                                .foregroundColor(.primary)
                                 .frame(width: 24, height: 24)
                             Text("Manage Account")
                                 .foregroundColor(.primary)
@@ -63,7 +56,7 @@ struct SettingsSheetView: View {
                     Button(action: { showingUpgrade = true }) {
                         HStack {
                             Image(systemName: "crown.fill")
-                                .foregroundColor(primaryColor)
+                                .foregroundColor(.primary)
                                 .frame(width: 24, height: 24)
                             Text("Upgrade to Pro")
                                 .foregroundColor(.primary)
@@ -79,7 +72,7 @@ struct SettingsSheetView: View {
                     Button(action: { showingSubscription = true }) {
                         HStack {
                             Image(systemName: "creditcard")
-                                .foregroundColor(primaryColor)
+                                .foregroundColor(.primary)
                                 .frame(width: 24, height: 24)
                             Text("Manage Subscription")
                                 .foregroundColor(.primary)
@@ -117,7 +110,7 @@ struct SettingsSheetView: View {
                     Button(action: { showingDefaults = true }) {
                         HStack {
                             Image(systemName: "gear")
-                                .foregroundColor(primaryColor)
+                                .foregroundColor(.primary)
                                 .frame(width: 24, height: 24)
                             Text("Default Settings")
                                 .foregroundColor(.primary)
@@ -136,7 +129,7 @@ struct SettingsSheetView: View {
                     Button(action: { showingTheme = true }) {
                         HStack {
                             Image(systemName: "paintbrush")
-                                .foregroundColor(primaryColor)
+                                .foregroundColor(.primary)
                                 .frame(width: 24, height: 24)
                             Text("Theme")
                                 .foregroundColor(.primary)
@@ -155,7 +148,7 @@ struct SettingsSheetView: View {
                     Button(action: { showingNotifications = true }) {
                         HStack {
                             Image(systemName: "bell")
-                                .foregroundColor(primaryColor)
+                                .foregroundColor(.primary)
                                 .frame(width: 24, height: 24)
                             Text("Notifications")
                                 .foregroundColor(.primary)
@@ -193,7 +186,7 @@ struct SettingsSheetView: View {
                     Button(action: { showingHelp = true }) {
                         HStack {
                             Image(systemName: "questionmark.circle")
-                                .foregroundColor(primaryColor)
+                                .foregroundColor(.primary)
                                 .frame(width: 24, height: 24)
                             Text("Help & Feedback")
                                 .foregroundColor(.primary)
@@ -237,14 +230,18 @@ struct SettingsSheetView: View {
                         impactFeedback.impactOccurred()
                         dismiss()
                     }
-                    .foregroundColor(primaryColor)
+                    .foregroundColor(.primary)
                 }
             }
             .sheet(isPresented: $showingUpgrade) {
-                UpgradeView()
+                NavigationView {
+                    UpgradeView()
+                }
             }
             .sheet(isPresented: $showingSubscription) {
-                SubscriptionView()
+                NavigationView {
+                    SubscriptionView()
+                }
             }
             // TODO: Uncomment when sign out functionality is ready
             /*
@@ -256,22 +253,41 @@ struct SettingsSheetView: View {
                 CalendarIntegrationView()
             }
             .sheet(isPresented: $showingDefaults) {
-                DefaultsView()
+                NavigationView {
+                    DefaultsView()
+                        .environmentObject(themeManager)
+                }
             }
             .sheet(isPresented: $showingTheme) {
-                ThemeView()
+                NavigationView {
+                    ThemeView()
+                        .environmentObject(themeManager)
+                }
             }
             .sheet(isPresented: $showingNotifications) {
-                NotificationsView()
+                NavigationView {
+                    NotificationsView()
+                        .environmentObject(themeManager)
+                }
             }
-                   .sheet(isPresented: $showingBackup) {
-                       BackupExportView()
-                   }
+            .sheet(isPresented: $showingBackup) {
+                NavigationView {
+                    BackupExportView()
+                        .environmentObject(themeManager)
+                }
+            }
             .sheet(isPresented: $showingHelp) {
-                HelpFeedbackView()
+                NavigationView {
+                    HelpFeedbackView()
+                        .environmentObject(themeManager)
+                }
             }
             .sheet(isPresented: $showingManageAccount) {
-                ManageAccountView()
+                NavigationView {
+                    ManageAccountView()
+                        .environmentObject(themeManager)
+                        .environmentObject(userProfileStore)
+                }
             }
         }
     }

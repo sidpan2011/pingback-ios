@@ -2,11 +2,7 @@ import SwiftUI
 
 struct FAQView: View {
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var themeManager: ThemeManager
-    
-    private var primaryColor: Color {
-        themeManager.primaryColor
-    }
+    // Removed themeManager dependency for instant theme switching
     
     var body: some View {
         List {
@@ -102,7 +98,7 @@ struct FAQView: View {
                 Button("Done") {
                     dismiss()
                 }
-                .foregroundColor(primaryColor)
+                .foregroundColor(.primary)
             }
         }
     }

@@ -37,18 +37,10 @@ struct SubscriptionView: View {
         }
     }
     
-    // Theme-aware colors
-    private var primaryColor: Color {
-        themeManager.primaryColor
-    }
-    
-    private var secondaryColor: Color {
-        themeManager.secondaryColor
-    }
+    // Removed theme color overrides for instant theme switching
     
     var body: some View {
-        NavigationView {
-            List {
+        List {
                 // Status Section
                 Section {
                     HStack {
@@ -113,7 +105,7 @@ struct SubscriptionView: View {
                                 UIApplication.shared.open(url)
                             }
                         }
-                        .foregroundColor(primaryColor)
+                        .foregroundColor(.primary)
                         
                         Button("Cancel Subscription") {
                             showingCancelConfirmation = true
@@ -135,30 +127,30 @@ struct SubscriptionView: View {
                             UIApplication.shared.open(url)
                         }
                     }
-                    .foregroundColor(primaryColor)
+                    .foregroundColor(.primary)
                     
                     Button("Restore Purchases") {
                         Task {
                             await subscriptionManager.restorePurchases()
                         }
                     }
-                    .foregroundColor(primaryColor)
+                    .foregroundColor(.primary)
                 } header: {
                     Text("Support")
                 } footer: {
                     Text("Need help with your subscription? Contact our support team or restore your purchases.")
                 }
-            }
-            .navigationTitle("Subscription")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                    .foregroundColor(primaryColor)
+        }
+        .navigationTitle("Subscription")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("Done") {
+                    dismiss()
                 }
+                .foregroundColor(.primary)
             }
+        }
             .alert("Cancel Subscription", isPresented: $showingCancelConfirmation) {
                 Button("Cancel", role: .cancel) { }
                 Button("Manage in App Store") {
@@ -169,7 +161,6 @@ struct SubscriptionView: View {
             } message: {
                 Text("To cancel your subscription, please manage it through the App Store. You'll lose access to Pro features at the end of your current billing period.")
             }
-        }
     }
 }
 

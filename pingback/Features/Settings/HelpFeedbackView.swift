@@ -2,27 +2,24 @@ import SwiftUI
 
 struct HelpFeedbackView: View {
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var themeManager: ThemeManager
+    // Removed themeManager dependency for instant theme switching
     @State private var showingFAQ = false
     @State private var showingAbout = false
     @State private var showingBugReport = false
     @State private var showingFeatureRequest = false
     @State private var showingGeneralFeedback = false
     
-    private var primaryColor: Color {
-        themeManager.primaryColor
-    }
+    // Use native SwiftUI colors for instant theme switching
     
     var body: some View {
-        NavigationView {
-            List {
+        List {
                 Section("Help") {
                     Button(action: {
                         showingFAQ = true
                     }) {
                         HStack {
                             Image(systemName: "questionmark.circle")
-                                .foregroundColor(primaryColor)
+                                .foregroundColor(.primary)
                             Text("FAQ & Help Center")
                                 .foregroundColor(.primary)
                             Spacer()
@@ -37,7 +34,7 @@ struct HelpFeedbackView: View {
                     }) {
                         HStack {
                             Image(systemName: "info.circle")
-                                .foregroundColor(primaryColor)
+                                .foregroundColor(.primary)
                             Text("About")
                                 .foregroundColor(.primary)
                             Spacer()
@@ -52,7 +49,7 @@ struct HelpFeedbackView: View {
                     }) {
                         HStack {
                             Image(systemName: "envelope")
-                                .foregroundColor(primaryColor)
+                                .foregroundColor(.primary)
                             Text("Contact Support")
                                 .foregroundColor(.primary)
                             Spacer()
@@ -69,7 +66,7 @@ struct HelpFeedbackView: View {
                     }) {
                         HStack {
                             Image(systemName: "ant")
-                                .foregroundColor(primaryColor)
+                                .foregroundColor(.primary)
                             Text("Report a Bug")
                                 .foregroundColor(.primary)
                             Spacer()
@@ -84,7 +81,7 @@ struct HelpFeedbackView: View {
                     }) {
                         HStack {
                             Image(systemName: "lightbulb")
-                                .foregroundColor(primaryColor)
+                                .foregroundColor(.primary)
                             Text("Suggest a Feature")
                                 .foregroundColor(.primary)
                             Spacer()
@@ -99,7 +96,7 @@ struct HelpFeedbackView: View {
                     }) {
                         HStack {
                             Image(systemName: "message")
-                                .foregroundColor(primaryColor)
+                                .foregroundColor(.primary)
                             Text("Share Feedback")
                                 .foregroundColor(.primary)
                             Spacer()
@@ -124,7 +121,7 @@ struct HelpFeedbackView: View {
                     }) {
                         HStack {
                             Image(systemName: "star")
-                                .foregroundColor(primaryColor)
+                                .foregroundColor(.primary)
                             Text("Rate App")
                                 .foregroundColor(.primary)
                             Spacer()
@@ -134,17 +131,17 @@ struct HelpFeedbackView: View {
                         }
                     }
                 }
-            }
-            .navigationTitle("Help & Feedback")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                    .foregroundColor(primaryColor)
+        }
+        .navigationTitle("Help & Feedback")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("Done") {
+                    dismiss()
                 }
+                .foregroundColor(.primary)
             }
+        }
             .sheet(isPresented: $showingFAQ) {
                 FAQView()
             }
@@ -160,7 +157,6 @@ struct HelpFeedbackView: View {
             .sheet(isPresented: $showingGeneralFeedback) {
                 GeneralFeedbackView()
             }
-        }
     }
     
     private func contactSupport() {

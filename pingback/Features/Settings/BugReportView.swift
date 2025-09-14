@@ -2,7 +2,7 @@ import SwiftUI
 
 struct BugReportView: View {
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var themeManager: ThemeManager
+    // Removed themeManager dependency for instant theme switching
     @State private var bugDescription = ""
     @State private var stepsToReproduce = ""
     @State private var expectedBehavior = ""
@@ -11,9 +11,7 @@ struct BugReportView: View {
     @State private var hasChanges = false
     @State private var showingBugReportSent = false
     
-    private var primaryColor: Color {
-        themeManager.primaryColor
-    }
+    // Use native SwiftUI colors for instant theme switching
     
     var body: some View {
         List {
@@ -120,7 +118,7 @@ struct BugReportView: View {
                     Button("Cancel") {
                         dismiss()
                     }
-                    .foregroundColor(primaryColor)
+                    .foregroundColor(.primary)
                 }
                 
                 if hasChanges {
@@ -129,7 +127,7 @@ struct BugReportView: View {
                             sendBugReport()
                         }
                         .fontWeight(.semibold)
-                        .foregroundColor(primaryColor)
+                        .foregroundColor(.primary)
                     }
                 }
             }

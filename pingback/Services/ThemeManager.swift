@@ -4,7 +4,7 @@ import Combine
 
 class ThemeManager: ObservableObject {
     @Published var colorScheme: ColorScheme = .light
-    @Published var selectedTheme: ThemeView.Theme = .light
+    @Published var selectedTheme: String = "light"
     
     static let shared = ThemeManager()
     private var cancellables = Set<AnyCancellable>()
@@ -35,7 +35,7 @@ class ThemeManager: ObservableObject {
     }
     
     private func updateSystemThemeIfNeeded() {
-        if selectedTheme == .system {
+        if selectedTheme == "system" {
             let systemColorScheme = UITraitCollection.current.userInterfaceStyle == .dark ? ColorScheme.dark : ColorScheme.light
             if colorScheme != systemColorScheme {
                 DispatchQueue.main.async {
@@ -52,16 +52,16 @@ class ThemeManager: ObservableObject {
         DispatchQueue.main.async {
             switch themeString {
             case "light":
-                self.selectedTheme = .light
+                self.selectedTheme = "light"
                 self.colorScheme = .light
             case "dark":
-                self.selectedTheme = .dark
+                self.selectedTheme = "dark"
                 self.colorScheme = .dark
             case "system":
-                self.selectedTheme = .system
+                self.selectedTheme = "system"
                 self.colorScheme = UITraitCollection.current.userInterfaceStyle == .dark ? .dark : .light
             default:
-                self.selectedTheme = .system
+                self.selectedTheme = "system"
                 self.colorScheme = UITraitCollection.current.userInterfaceStyle == .dark ? .dark : .light
             }
             print("🎨 ThemeManager: After update - selectedTheme: \(self.selectedTheme), colorScheme: \(self.colorScheme)")
@@ -79,20 +79,6 @@ class ThemeManager: ObservableObject {
         print("✅ ThemeManager: Theme saved to UserDefaults")
     }
     
-    // Computed properties for theme-aware colors
-    var primaryColor: Color {
-        colorScheme == .dark ? .white : .black
-    }
-    
-    var secondaryColor: Color {
-        colorScheme == .dark ? .black : .white
-    }
-    
-    var backgroundColor: Color {
-        colorScheme == .dark ? Color(.systemBackground) : Color(.systemBackground)
-    }
-    
-    var secondaryBackgroundColor: Color {
-        colorScheme == .dark ? Color(.secondarySystemBackground) : Color(.secondarySystemBackground)
-    }
+    // ThemeManager only handles theme state - no color overrides
+    // Let SwiftUI handle colors natively for instant theme switching
 }

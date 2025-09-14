@@ -12,6 +12,8 @@ enum DeepLinkBuilder {
             return URL(string: "sms:&body=\(encoded)")
         case .email:
             return URL(string: "mailto:?subject=Follow-up&body=\(encoded)")
+        case .instagram:
+            return URL(string: "https://www.instagram.com/direct/inbox/")
         case .other:
             return URL(string: "https://example.com?text=\(encoded)")
         }

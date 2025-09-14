@@ -2,15 +2,10 @@ import SwiftUI
 
 struct BackupExportView: View {
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var themeManager: ThemeManager
-    
-    private var primaryColor: Color {
-        themeManager.primaryColor
-    }
+    // Removed themeManager dependency for instant theme switching
     
     var body: some View {
-        NavigationView {
-            List {
+        List {
                 Section("Export Data") {
                     Button(action: {
                         exportData()
@@ -52,16 +47,15 @@ struct BackupExportView: View {
                         }
                     }
                 }
-            }
-            .navigationTitle("Backup & Export")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                    .foregroundColor(primaryColor)
+        }
+        .navigationTitle("Backup & Export")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("Done") {
+                    dismiss()
                 }
+                .foregroundColor(.primary)
             }
         }
     }

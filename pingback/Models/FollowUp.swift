@@ -12,7 +12,7 @@ enum Status: String {
 }
 
 enum AppKind: String, CaseIterable, Identifiable {
-    case whatsapp, telegram, sms, email, other
+    case whatsapp, telegram, sms, email, instagram, other
     var id: String { rawValue }
     var label: String {
         switch self {
@@ -20,6 +20,7 @@ enum AppKind: String, CaseIterable, Identifiable {
         case .telegram: return "Telegram"
         case .sms: return "SMS"
         case .email: return "Email"
+        case .instagram: return "Instagram"
         case .other: return "Other"
         }
     }
@@ -29,13 +30,14 @@ enum AppKind: String, CaseIterable, Identifiable {
         case .telegram: return "paperplane.circle"
         case .sms: return "bubble.left.circle"
         case .email: return "envelope.circle"
+        case .instagram: return "camera.circle"
         case .other: return "square.grid.2x2"
         }
     }
     
     var hasCustomLogo: Bool {
         switch self {
-        case .whatsapp, .telegram, .sms, .email:
+        case .whatsapp, .telegram, .sms, .email, .instagram:
             return true
         case .other:
             return false
@@ -44,11 +46,12 @@ enum AppKind: String, CaseIterable, Identifiable {
     
     var logoImageName: String {
         switch self {
-        case .whatsapp: return "whatsapp_logo"
-        case .telegram: return "telegram_logo"
-        case .sms: return "sms_logo"
-        case .email: return "email_logo"
-        case .other: return "other_logo"
+        case .whatsapp: return "WhatsAppLogo"
+        case .telegram: return "TelegramLogo"
+        case .sms: return "SMSLogo"
+        case .email: return "EmailLogo"
+        case .instagram: return "InstagramLogo"
+        case .other: return "OtherLogo"
         }
     }
 }

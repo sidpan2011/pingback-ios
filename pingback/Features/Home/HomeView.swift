@@ -9,7 +9,7 @@ struct HomeView: View {
     @State private var selectedItem: FollowUp?
     @State private var showSettingsSheet: Bool = false
     @State private var isCompletedSectionExpanded = false
-    @EnvironmentObject private var themeManager: ThemeManager
+    // Removed themeManager dependency for instant theme switching
 
     enum Filter: String, CaseIterable { 
         case all, doIt, waitingOn, completed 
@@ -75,6 +75,7 @@ struct HomeView: View {
             }
             .sheet(isPresented: $showSettingsSheet) {
                 SettingsSheet()
+                    .environmentObject(userProfileStore)
             }
             .onAppear {
                 print("🏠 HomeView: View appeared")
@@ -458,8 +459,12 @@ struct HomeView: View {
 
 struct SettingsSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var themeManager: ThemeManager
+    @EnvironmentObject private var userProfileStore: UserProfileStore
     
     var body: some View {
         SettingsSheetView()
+            .environmentObject(themeManager)
+            .environmentObject(userProfileStore)
     }
 }

@@ -16,10 +16,7 @@ struct DefaultsView: View {
     @State private var initialSnoozeTime: SnoozeTime = .fifteenMinutes
     @State private var initialSnoozeDate: SnoozeDate = .tonight
     
-    // Theme-aware colors
-    private var primaryColor: Color {
-        themeManager.primaryColor
-    }
+    // Removed theme color overrides for instant theme switching
     
     private func checkForChanges() {
         hasChanges = morningHour != initialMorningHour ||
@@ -69,8 +66,7 @@ struct DefaultsView: View {
     }
     
     var body: some View {
-        NavigationView {
-            List {
+        List {
                 // Default Tag Section
                 // Section {
                 //     Picker("Default Tag", selection: $defaultTag) {
@@ -103,7 +99,7 @@ struct DefaultsView: View {
                             }
                         }
                         .pickerStyle(.menu)
-                        .accentColor(primaryColor)
+                        .accentColor(.primary)
                     }
                     
                     HStack {
@@ -115,7 +111,7 @@ struct DefaultsView: View {
                             }
                         }
                         .pickerStyle(.menu)
-                        .accentColor(primaryColor)
+                        .accentColor(.primary)
                     }
                 } header: {
                     Text("Time Settings")
@@ -134,7 +130,7 @@ struct DefaultsView: View {
                             }
                         }
                         .pickerStyle(.menu)
-                        .accentColor(primaryColor)
+                        .accentColor(.primary)
                     }
                     
                     HStack {
@@ -146,40 +142,39 @@ struct DefaultsView: View {
                             }
                         }
                         .pickerStyle(.menu)
-                        .accentColor(primaryColor)
+                        .accentColor(.primary)
                     }
                 } header: {
                     Text("Snooze Settings")
                 } footer: {
                     Text("Set default snooze duration and timing for follow-ups.")
                 }
-            }
-            .navigationTitle("Defaults")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                    .foregroundColor(primaryColor)
+        }
+        .navigationTitle("Defaults")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button("Cancel") {
+                    dismiss()
                 }
-                
-                if hasChanges {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button("Save") {
-                            saveDefaults()
-                        }
-                        // .fontWeight(.semibold)
-                        .foregroundColor(primaryColor)
+                .foregroundColor(.primary)
+            }
+            
+            if hasChanges {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Save") {
+                        saveDefaults()
                     }
+                    // .fontWeight(.semibold)
+                    .foregroundColor(.primary)
                 }
             }
+        }
             // .onChange(of: defaultTag) { _, _ in checkForChanges() }
             .onChange(of: morningHour) { _, _ in checkForChanges() }
             .onChange(of: endOfDayHour) { _, _ in checkForChanges() }
             .onChange(of: selectedSnoozeTime) { _, _ in checkForChanges() }
             .onChange(of: selectedSnoozeDate) { _, _ in checkForChanges() }
-        }
     }
     
     

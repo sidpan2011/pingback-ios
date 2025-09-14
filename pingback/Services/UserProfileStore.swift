@@ -75,14 +75,22 @@ final class UserProfileStore: ObservableObject {
             
             try self.coreDataStack.saveContext(context)
             print("✅ UserProfileStore: Profile saved successfully")
+            
+            // Update the existing profile instance instead of creating a new one
+            if let existingProfile = self.profile {
+                existingProfile.fullName = profile.fullName
+                existingProfile.email = profile.email
+                existingProfile.avatarData = profile.avatarData
+                existingProfile.theme = profile.theme
+            } else {
+                self.profile = profile
+            }
         }
-        
-        await loadProfile()
     }
     
     /// Update profile theme
     func updateTheme(_ theme: String) async throws {
-        guard var currentProfile = profile else { return }
+        guard let currentProfile = profile else { return }
         
         currentProfile.theme = theme
         try await saveProfile(currentProfile)
@@ -90,7 +98,7 @@ final class UserProfileStore: ObservableObject {
     
     /// Update profile name
     func updateName(_ name: String) async throws {
-        guard var currentProfile = profile else { return }
+        guard let currentProfile = profile else { return }
         
         currentProfile.fullName = name
         try await saveProfile(currentProfile)
@@ -98,7 +106,7 @@ final class UserProfileStore: ObservableObject {
     
     /// Update profile email
     func updateEmail(_ email: String?) async throws {
-        guard var currentProfile = profile else { return }
+        guard let currentProfile = profile else { return }
         
         currentProfile.email = email
         try await saveProfile(currentProfile)
@@ -106,7 +114,7 @@ final class UserProfileStore: ObservableObject {
     
     /// Update profile avatar
     func updateAvatar(_ avatarData: Data?) async throws {
-        guard var currentProfile = profile else { return }
+        guard let currentProfile = profile else { return }
         
         currentProfile.avatarData = avatarData
         try await saveProfile(currentProfile)

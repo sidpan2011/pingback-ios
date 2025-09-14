@@ -2,7 +2,7 @@ import SwiftUI
 
 struct FeatureRequestView: View {
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var themeManager: ThemeManager
+    // Removed themeManager dependency for instant theme switching
     @State private var featureTitle = ""
     @State private var featureDescription = ""
     @State private var useCase = ""
@@ -10,9 +10,7 @@ struct FeatureRequestView: View {
     @State private var hasChanges = false
     @State private var showingFeatureRequestSent = false
     
-    private var primaryColor: Color {
-        themeManager.primaryColor
-    }
+    // Use native SwiftUI colors for instant theme switching
     
     let priorityOptions = ["Low", "Medium", "High"]
     
@@ -82,7 +80,7 @@ struct FeatureRequestView: View {
                             }
                         }
                         .pickerStyle(.menu)
-                        .accentColor(primaryColor)
+                        .accentColor(.primary)
                     }
                 } header: {
                     Text("Priority Level")
@@ -97,7 +95,7 @@ struct FeatureRequestView: View {
                     Button("Cancel") {
                         dismiss()
                     }
-                    .foregroundColor(primaryColor)
+                    .foregroundColor(.primary)
                 }
                 
                 if hasChanges {
@@ -106,7 +104,7 @@ struct FeatureRequestView: View {
                             sendFeatureRequest()
                         }
                         .fontWeight(.semibold)
-                        .foregroundColor(primaryColor)
+                        .foregroundColor(.primary)
                     }
                 }
             }

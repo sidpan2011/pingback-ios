@@ -4,10 +4,7 @@ struct ThemeView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var themeManager: ThemeManager
     
-    // Theme-aware colors
-    private var primaryColor: Color {
-        themeManager.primaryColor
-    }
+    // Use native SwiftUI colors for instant theme switching
     
     enum Theme: String, CaseIterable {
         case system = "System"
@@ -34,28 +31,25 @@ struct ThemeView: View {
     
     var body: some View {
         let _ = print("🎨 ThemeView: Body updated - colorScheme: \(themeManager.colorScheme), selectedTheme: \(themeManager.selectedTheme)")
-        NavigationView {
-            List {
-                ForEach(Theme.allCases, id: \.self) { theme in
-                    ThemeRow(
-                        theme: theme,
-                        isSelected: themeManager.selectedTheme == theme
-                    ) {
-                        print("🎨 ThemeView: Theme selected: \(theme.rawValue)")
-                        themeManager.setTheme(theme.rawValue.lowercased())
-                        applyTheme(theme)
-                    }
+        List {
+            ForEach(Theme.allCases, id: \.self) { theme in
+                ThemeRow(
+                    theme: theme
+                ) {
+                    print("🎨 ThemeView: Theme selected: \(theme.rawValue)")
+                    themeManager.setTheme(theme.rawValue.lowercased())
+                    applyTheme(theme)
                 }
             }
-            .navigationTitle("Theme")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                    .foregroundColor(primaryColor)
+        }
+        .navigationTitle("Theme")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("Done") {
+                    dismiss()
                 }
+                .foregroundColor(.primary)
             }
         }
     }
@@ -72,21 +66,22 @@ struct ThemeView: View {
 
 struct ThemeRow: View {
     let theme: ThemeView.Theme
-    let isSelected: Bool
     let onTap: () -> Void
     @EnvironmentObject private var themeManager: ThemeManager
     
-    // Theme-aware colors
-    private var primaryColor: Color {
-        themeManager.primaryColor
+    // Use native SwiftUI colors for instant theme switching
+    
+    // Make isSelected computed from themeManager to be reactive
+    private var isSelected: Bool {
+        themeManager.selectedTheme == theme.rawValue.lowercased()
     }
     
     var body: some View {
-        let _ = print("🎨 ThemeRow: Body updated - theme: \(theme.rawValue), isSelected: \(isSelected), colorScheme: \(themeManager.colorScheme)")
+        let _ = print("🎨 ThemeRow: Body updated - theme: \(theme.rawValue), isSelected: \(isSelected), colorScheme: \(themeManager.colorScheme), themeManager.selectedTheme: \(themeManager.selectedTheme)")
         Button(action: onTap) {
             HStack(spacing: 16) {
                 Image(systemName: theme.icon)
-                    .foregroundColor(primaryColor)
+                    .foregroundColor(.primary)
                     .frame(width: 24, height: 24)
                 
                 VStack(alignment: .leading, spacing: 2) {
@@ -104,7 +99,7 @@ struct ThemeRow: View {
                 if isSelected {
                     Image(systemName: "checkmark")
                         .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(primaryColor)
+                        .foregroundColor(.primary)
                 }
             }
             // .padding(.vertical, 8)

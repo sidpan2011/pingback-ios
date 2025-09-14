@@ -2,11 +2,7 @@ import SwiftUI
 
 struct AboutView: View {
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var themeManager: ThemeManager
-    
-    private var primaryColor: Color {
-        themeManager.primaryColor
-    }
+    // Removed themeManager dependency for instant theme switching
     
     var body: some View {
         ScrollView {
@@ -15,7 +11,7 @@ struct AboutView: View {
                     VStack(spacing: 16) {
                         Image(systemName: "app.fill")
                             .font(.system(size: 80))
-                            .foregroundColor(primaryColor)
+                            .foregroundColor(.primary)
                             .frame(width: 120, height: 120)
                             .background(
                                 RoundedRectangle(cornerRadius: 20)
@@ -123,7 +119,7 @@ struct AboutView: View {
                 Button("Done") {
                     dismiss()
                 }
-                .foregroundColor(primaryColor)
+                .foregroundColor(.primary)
             }
         }
     }
@@ -132,17 +128,13 @@ struct AboutView: View {
 struct AboutFeatureRow: View {
     let icon: String
     let text: String
-    @EnvironmentObject private var themeManager: ThemeManager
-    
-    private var primaryColor: Color {
-        themeManager.primaryColor
-    }
+    // Removed themeManager dependency for instant theme switching
     
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 16, weight: .medium))
-                .foregroundColor(primaryColor)
+                .foregroundColor(.primary)
                 .frame(width: 20)
             
             Text(text)

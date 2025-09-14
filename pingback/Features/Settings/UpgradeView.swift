@@ -3,7 +3,7 @@ import StoreKit
 
 struct UpgradeView: View {
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var themeManager: ThemeManager
+    // Removed themeManager dependency for instant theme switching
     @StateObject private var subscriptionManager = SubscriptionManager()
 
     // The only choice in this screen is billing cadence for the Pro plan
@@ -21,14 +21,7 @@ struct UpgradeView: View {
     ]
     @State private var featureIndex: Int = 0
     
-    // Theme-aware colors
-    private var primaryColor: Color {
-        themeManager.primaryColor
-    }
-    
-    private var secondaryColor: Color {
-        themeManager.secondaryColor
-    }
+    // Removed theme color overrides for instant theme switching
 
     var body: some View {
         NavigationStack {
@@ -40,7 +33,7 @@ struct UpgradeView: View {
                             VStack(spacing: 16) {
                                 Image(systemName: item.symbol)
                                     .font(.system(size: 80))
-                                    .foregroundColor(primaryColor)
+                                    .foregroundColor(.primary)
 
                                 Text(item.title)
                                     .font(.title3).bold()
@@ -71,7 +64,7 @@ struct UpgradeView: View {
                             subText: yearlySubText,
                             isSelected: selectedSubscription == .yearly,
                             saveBadge: subscriptionManager.calculateSavings(),
-                            primaryColor: primaryColor,
+                            primaryColor: .primary,
                             onTap: { selectedSubscription = .yearly }
                         )
 
@@ -81,7 +74,7 @@ struct UpgradeView: View {
                             subText: "billed monthly",
                             isSelected: selectedSubscription == .monthly,
                             saveBadge: nil,
-                            primaryColor: primaryColor,
+                            primaryColor: .primary,
                             onTap: { selectedSubscription = .monthly }
                         )
                     }
@@ -100,7 +93,7 @@ struct UpgradeView: View {
                     Button("Cancel") { 
                         dismiss() 
                     }
-                    .foregroundColor(primaryColor)
+                    .foregroundColor(.primary)
                 } 
             }
             .safeAreaInset(edge: .bottom) { stickyCTA }
@@ -125,16 +118,16 @@ struct UpgradeView: View {
             Button(action: handleContinue) {
                 Text("Continue")
                     .font(.headline).bold()
-                    .foregroundColor(secondaryColor)
+                    .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity)
                     .frame(height: 42)
-                    .background(primaryColor)
+                    .background(.primary)
                     .cornerRadius(8)
             }
             .disabled(subscriptionManager.isLoading)
             .overlay(
                 Group {
-                    if subscriptionManager.isLoading { ProgressView().tint(secondaryColor) }
+                    if subscriptionManager.isLoading { ProgressView().tint(.secondary) }
                 }
             )
             .padding(.horizontal, 20)

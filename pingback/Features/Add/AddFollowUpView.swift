@@ -81,14 +81,14 @@ struct AddFollowUpView: View {
                                     selectedApp = app
                                 } label: {
                                     HStack {
-                                        Image(systemName: app.icon)
+                                        AppLogoView(app, size: 20)
                                         Text(app.label)
                                     }
                                 }
                             }
                         } label: {
                             HStack {
-                                Image(systemName: selectedApp.icon)
+                                AppLogoView(selectedApp, size: 20)
                                 Text(selectedApp.label)
                             }
                             .foregroundStyle(.primary)

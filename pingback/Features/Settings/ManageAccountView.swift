@@ -2,9 +2,9 @@ import SwiftUI
 import PhotosUI
 
 struct ManageAccountView: View {
-    @StateObject private var userProfileStore = UserProfileStore()
+    @EnvironmentObject private var userProfileStore: UserProfileStore
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var themeManager: ThemeManager
+    // Removed themeManager dependency for instant theme switching
     
     @State private var fullName: String = ""
     @State private var email: String = ""
@@ -15,18 +15,10 @@ struct ManageAccountView: View {
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var showingPhotoPicker = false
     
-    // Theme-aware colors
-    private var primaryColor: Color {
-        themeManager.primaryColor
-    }
-    
-    private var secondaryColor: Color {
-        themeManager.secondaryColor
-    }
+    // Removed theme color overrides for instant theme switching
     
     var body: some View {
-        NavigationView {
-            Form {
+        Form {
                 // Profile Picture Section - Inside Form with custom styling
                 Section {
                     VStack(spacing: 16) {
@@ -132,7 +124,7 @@ struct ManageAccountView: View {
                                 Text("Edit Account")
                                     .font(.body)
                                     // .fontWeight(.medium)
-                                    .foregroundColor(primaryColor)
+                                    .foregroundColor(.primary)
                                 Spacer()
                             }
                         }
@@ -181,7 +173,7 @@ struct ManageAccountView: View {
                             dismiss()
                         }
                     }
-                    .foregroundColor(primaryColor)
+                    .foregroundColor(.primary)
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -189,7 +181,7 @@ struct ManageAccountView: View {
                         Button("Save") {
                             saveChanges()
                         }
-                        .foregroundColor(primaryColor)
+                        .foregroundColor(.primary)
                         .disabled(!hasChanges)
                     }
                 }
@@ -218,7 +210,6 @@ struct ManageAccountView: View {
             } message: {
                 Text("Are you sure you want to delete your account? This action cannot be undone and all your data will be permanently lost.")
             }
-        }
     }
     
     private func loadUserData() {

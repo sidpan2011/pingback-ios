@@ -21,7 +21,7 @@ struct QuickAddView: View {
 
                 Picker("", selection: $app) {
                     ForEach(AppKind.allCases) { a in
-                        Image(systemName: a.icon).tag(a)
+                        AppLogoView(a, size: 16).tag(a)
                     }
                 }
                 .pickerStyle(.menu)
