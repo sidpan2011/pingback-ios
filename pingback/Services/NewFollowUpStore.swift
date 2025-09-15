@@ -188,36 +188,57 @@ final class NewFollowUpStore: ObservableObject {
              type: FollowType,
              contact: String,
              app: AppKind,
+             url: String? = nil,
              overrideDue: Date? = nil,
-             now: Date = .now) {
-        Task {
-            let parsed = Parser.shared.parse(text: text, now: now, eodHour: settings.eodHour, morningHour: settings.morningHour)
-            let due = overrideDue ?? parsed?.dueAt ?? defaultDue(now: now)
-            let verb = parsed?.verb ?? Parser.shared.detectVerb(in: text) ?? "follow up"
-            let finalType = parsed?.type ?? type
-            
-            let followUp = FollowUp(
-                id: UUID(),
-                type: finalType,
-                contactLabel: contact.isEmpty ? "Unknown" : contact,
-                app: app,
-                snippet: text.trimmingCharacters(in: .whitespacesAndNewlines),
-                url: nil,
-                verb: verb,
-                dueAt: due,
-                createdAt: now,
-                status: .open,
-                lastNudgedAt: nil
-            )
-            
-            do {
-                try await create(followUp)
-            } catch {
-                await MainActor.run {
-                    self.error = error
-                }
-            }
-        }
+             now: Date = .now) async throws {
+        print("🏪 NewFollowUpStore.add() called with:")
+        print("   - Text: \(String(text.prefix(100)))")
+        print("   - Type: \(type)")
+        print("   - Contact: \(contact)")
+        print("   - App: \(app)")
+        print("   - URL: \(url ?? "nil")")
+        print("   - Current follow-ups count before add: \(await followUps.count)")
+        
+        let parsed = Parser.shared.parse(text: text, now: now, eodHour: settings.eodHour, morningHour: settings.morningHour)
+        let due = overrideDue ?? parsed?.dueAt ?? defaultDue(now: now)
+        let verb = parsed?.verb ?? Parser.shared.detectVerb(in: text) ?? "follow up"
+        let finalType = parsed?.type ?? type
+        
+        let followUp = FollowUp(
+            id: UUID(),
+            type: finalType,
+            contactLabel: contact.isEmpty ? "Unknown" : contact,
+            app: app,
+            snippet: text.trimmingCharacters(in: .whitespacesAndNewlines),
+            url: url,
+            verb: verb,
+            dueAt: due,
+            createdAt: now,
+            status: .open,
+            lastNudgedAt: nil
+        )
+        
+        print("🔍 NewFollowUpStore: === CREATING FOLLOWUP OBJECT ===")
+        print("   - ID: \(followUp.id)")
+        print("   - Type: \(followUp.type)")
+        print("   - ContactLabel: '\(followUp.contactLabel)'")
+        print("   - App: \(followUp.app) (\(followUp.app.rawValue))")
+        print("   - Snippet: '\(String(followUp.snippet.prefix(50)))'")
+        print("   - URL: '\(followUp.url ?? "nil")'")
+        print("   - Verb: '\(followUp.verb)'")
+        print("   - Status: \(followUp.status)")
+        
+        print("🏪 NewFollowUpStore: Creating follow-up with ID: \(followUp.id)")
+        print("   - Follow-up details:")
+        print("     - Snippet: \(String(followUp.snippet.prefix(50)))")
+        print("     - Contact: \(followUp.contactLabel)")
+        print("     - App: \(followUp.app.rawValue)")
+        print("     - Type: \(followUp.type.rawValue)")
+        print("     - Due: \(followUp.dueAt)")
+        
+        try await create(followUp)
+        print("✅ NewFollowUpStore: Successfully created follow-up!")
+        print("   - Current follow-ups count after add: \(await followUps.count)")
     }
     
     /// Mark a follow-up as done (compatible with old FollowUpStore interface)

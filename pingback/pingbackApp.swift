@@ -16,8 +16,13 @@ struct pingbackApp: App {
     @StateObject private var notificationManager = NotificationManager.shared
     
     init() {
+        print("🚀 pingbackApp: App is initializing...")
         // Configure RevenueCat on app launch
         RevenueCatConfiguration.configure()
+        
+        // DON'T clear shared data on app launch - let HomeView process it first
+        // The SharedDataManager will clear data after successful processing
+        print("🚀 pingbackApp: App initialization completed - shared data will be processed by HomeView")
     }
     
     var body: some Scene {
@@ -64,3 +69,4 @@ struct pingbackApp: App {
 extension Notification.Name {
     static let navigateToFollowUp = Notification.Name("navigateToFollowUp")
 }
+

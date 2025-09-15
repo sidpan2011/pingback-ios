@@ -12,6 +12,7 @@ struct LaunchGateView: View {
     @State private var showOnboardingSheet = false
     @State private var showHomeView = false
     @EnvironmentObject var followUpStore: FollowUpStore
+    @EnvironmentObject var newFollowUpStore: NewFollowUpStore
     @EnvironmentObject var themeManager: ThemeManager
     
     var body: some View {
@@ -98,6 +99,7 @@ struct LaunchGateView: View {
         .fullScreenCover(isPresented: $showHomeView) {
             HomeView()
                 .environmentObject(followUpStore)
+                .environmentObject(newFollowUpStore)
                 .environmentObject(themeManager)
         }
     }
