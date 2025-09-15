@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct HomeView: View {
-    @StateObject private var store = NewFollowUpStore()
+    @EnvironmentObject private var store: NewFollowUpStore
     @StateObject private var userProfileStore = UserProfileStore()
     @State private var query: String = ""
     @State private var selectedFilter: Filter = .all
@@ -15,7 +15,9 @@ struct HomeView: View {
     @State private var unreadNotificationIds: Set<String> = []
     @State private var notificationRefreshTimer: Timer?
     @FocusState private var isSearchFocused: Bool
+    @State private var isRefreshing = false
     // Removed themeManager dependency for instant theme switching
+    private let sharedDataManager = SharedDataManager.shared
 
     enum Filter: String, CaseIterable { 
         case all, doIt, waitingOn, overdue, completed 
@@ -91,6 +93,7 @@ struct HomeView: View {
                     }
             }
             .onAppear {
+                print("🏠 HomeView: onAppear called - this should show every time you open the app")
                 print("🏠 HomeView: View appeared")
                 print("   - Store has \(store.followUps.count) follow-ups")
                 print("   - Store isLoading: \(store.isLoading)")
@@ -102,18 +105,34 @@ struct HomeView: View {
                 
                 // Start periodic notification count refresh
                 startNotificationRefreshTimer()
+                
+                // Process any pending shared follow-ups from share extension
+                Task {
+                    print("🏠 HomeView: App appeared, checking for shared data...")
+                    print("🏠 HomeView: Store has \(await store.followUps.count) follow-ups before processing")
+                    
+                    // Debug: Check UserDefaults data directly
+                    debugUserDefaultsData()
+                    
+                    // Clean up existing duplicate follow-ups first
+                    await sharedDataManager.cleanupDuplicateFollowUps(using: store)
+                    
+                    print("🏠 HomeView: About to call sharedDataManager.processPendingSharedFollowUps()")
+                    await sharedDataManager.processPendingSharedFollowUps(using: store)
+                    print("🏠 HomeView: Store has \(await store.followUps.count) follow-ups after processing")
+                    print("🏠 HomeView: SharedDataManager processing completed")
+                }
             }
             .onChange(of: store.items) { _ in
                 // Update notification count when items change
                 loadNotificationCount()
             }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
-                // Update notification count when app becomes active (user might have received notifications)
                 loadNotificationCount()
+                // Note: Removed duplicate processing to prevent multiple calls
             }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
-                // Update notification count when app enters foreground
-                loadNotificationCount()
+                // Note: Removed duplicate processing to prevent multiple calls
             }
             .onDisappear {
                 // Stop timer when view disappears
@@ -456,6 +475,9 @@ struct HomeView: View {
                     }
                 }
                 .listStyle(.plain)
+                .refreshable {
+                    await refreshData()
+                }
             }
         }
         .alert("Error", isPresented: .constant(store.error != nil)) {
@@ -693,6 +715,100 @@ struct HomeView: View {
                     loadNotificationCount()
                 }
             }
+        }
+    }
+    
+    private func refreshData() async {
+        print("🔄 HomeView: Pull-to-refresh triggered")
+        print("🔄 HomeView: Store has \(await store.followUps.count) follow-ups before refresh")
+        isRefreshing = true
+        
+        // Reload follow-ups from Core Data
+        print("🔄 HomeView: Reloading follow-ups from Core Data...")
+        await store.loadFollowUps()
+        print("🔄 HomeView: Store has \(await store.followUps.count) follow-ups after Core Data reload")
+        
+        // Only process shared data if there's actually pending data
+        if sharedDataManager.hasPendingSharedFollowUps() {
+            print("🔄 HomeView: Found pending shared data during refresh...")
+            await sharedDataManager.processPendingSharedFollowUps(using: store)
+            print("🔄 HomeView: Store has \(await store.followUps.count) follow-ups after shared data processing")
+        } else {
+            print("🔄 HomeView: No pending shared data found during refresh")
+        }
+        
+        // Update notification count
+        loadNotificationCount()
+        
+        await MainActor.run {
+            isRefreshing = false
+        }
+        
+        print("✅ HomeView: Pull-to-refresh completed")
+        print("✅ HomeView: Final follow-ups count: \(await store.followUps.count)")
+    }
+    
+    private func debugUserDefaultsData() {
+        print("🔍 HomeView: Debugging UserDefaults data...")
+        
+        // Check app group UserDefaults
+        if let appGroupUserDefaults = UserDefaults(suiteName: "group.app.pingback.shared") {
+            print("🔍 HomeView: App Group UserDefaults accessible")
+            if let data = appGroupUserDefaults.data(forKey: "shared_followups") {
+                print("🔍 HomeView: Found data in app group UserDefaults")
+                if let json = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+                    print("🔍 HomeView: App group data contains \(json.count) items")
+                    for (index, item) in json.enumerated() {
+                        print("   - App Group Item \(index + 1): \(item)")
+                    }
+                } else {
+                    print("🔍 HomeView: Failed to parse app group data as JSON")
+                }
+            } else {
+                print("🔍 HomeView: No data found in app group UserDefaults")
+            }
+        } else {
+            print("🔍 HomeView: App Group UserDefaults not accessible")
+        }
+        
+        // Check standard UserDefaults
+        if let data = UserDefaults.standard.data(forKey: "pingback_shared_followups") {
+            print("🔍 HomeView: Found data in standard UserDefaults")
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+                print("🔍 HomeView: Standard UserDefaults data contains \(json.count) items")
+                for (index, item) in json.enumerated() {
+                    print("   - Standard Item \(index + 1): \(item)")
+                }
+            } else {
+                print("🔍 HomeView: Failed to parse standard UserDefaults data as JSON")
+            }
+        } else {
+            print("🔍 HomeView: No data found in standard UserDefaults")
+        }
+        
+        // Check app group file
+        if let appGroupURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.app.pingback.shared") {
+            let sharedDataURL = appGroupURL.appendingPathComponent("shared_followups.json")
+            if FileManager.default.fileExists(atPath: sharedDataURL.path) {
+                print("🔍 HomeView: Found app group file at \(sharedDataURL)")
+                do {
+                    let data = try Data(contentsOf: sharedDataURL)
+                    if let json = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+                        print("🔍 HomeView: App group file contains \(json.count) items")
+                        for (index, item) in json.enumerated() {
+                            print("   - File Item \(index + 1): \(item)")
+                        }
+                    } else {
+                        print("🔍 HomeView: Failed to parse app group file as JSON")
+                    }
+                } catch {
+                    print("🔍 HomeView: Error reading app group file: \(error)")
+                }
+            } else {
+                print("🔍 HomeView: No app group file found")
+            }
+        } else {
+            print("🔍 HomeView: App group container not accessible")
         }
     }
 }
