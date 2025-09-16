@@ -596,11 +596,24 @@ struct HomeView: View {
     // MARK: - Actions
     
     private func bumpItem(_ item: FollowUp) {
-        guard let url = DeepLinkBuilder.url(for: item.app, text: item.snippet) else { return }
-        UIApplication.shared.open(url)
-        // Add haptic feedback
-        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-        impactFeedback.impactOccurred()
+        let message = createMessage(for: item)
+        let success = DeepLinkHelper.openChat(for: item, message: message)
+        
+        if success {
+            // Add haptic feedback
+            let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+            impactFeedback.impactOccurred()
+            
+            // Track analytics
+            AnalyticsService.shared.trackChatOpened(app: item.appType, source: "home_bump")
+        } else {
+            print("❌ Failed to open chat for \(item.appType.label)")
+        }
+    }
+    
+    private func createMessage(for followUp: FollowUp) -> String {
+        // TODO: Use template system when implemented
+        return followUp.note
     }
     
     private func snoozeItem(_ item: FollowUp) {

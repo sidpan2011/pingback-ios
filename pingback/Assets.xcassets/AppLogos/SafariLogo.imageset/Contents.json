@@ -1,17 +1,15 @@
 {
   "images" : [
     {
-      "filename" : "other_logo.png",
+      "filename" : "safari.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "other_logo@2x.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "other_logo@3x.png",
       "idiom" : "universal",
       "scale" : "3x"
     }

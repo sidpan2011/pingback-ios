@@ -427,7 +427,7 @@ class SharedDataManager {
         }
         
         print("❌ SharedDataManager: No match found for '\(sourceApp)' / '\(bundleId)' - defaulting to 'other'")
-        return .other
+        return .whatsapp
     }
     
     private func clearSharedData() throws {

@@ -204,14 +204,19 @@ final class NewFollowUpStore: ObservableObject {
         let verb = parsed?.verb ?? Parser.shared.detectVerb(in: text) ?? "follow up"
         let finalType = parsed?.type ?? type
         
+        // Create a person object for the follow-up
+        let person = Person(
+            firstName: contact.isEmpty ? "Unknown" : contact,
+            lastName: ""
+        )
+        
         let followUp = FollowUp(
             id: UUID(),
             type: finalType,
-            contactLabel: contact.isEmpty ? "Unknown" : contact,
-            app: app,
-            snippet: text.trimmingCharacters(in: .whitespacesAndNewlines),
+            person: person,
+            appType: app,
+            note: text.trimmingCharacters(in: .whitespacesAndNewlines),
             url: url,
-            verb: verb,
             dueAt: due,
             createdAt: now,
             status: .open,
@@ -406,14 +411,20 @@ final class NewFollowUpStore: ObservableObject {
     }
     
     private func mapCoreDataToFollowUp(_ cdFollowUp: CDFollowUp) -> FollowUp {
+        // Create a person object from the Core Data contact label
+        let contactLabel = cdFollowUp.contactLabel ?? ""
+        let person = Person(
+            firstName: contactLabel.isEmpty ? "Unknown" : contactLabel,
+            lastName: ""
+        )
+        
         return FollowUp(
             id: cdFollowUp.id ?? UUID(),
             type: FollowType(rawValue: cdFollowUp.type ?? "") ?? .doIt,
-            contactLabel: cdFollowUp.contactLabel ?? "",
-            app: AppKind(rawValue: cdFollowUp.app ?? "") ?? .other,
-            snippet: cdFollowUp.snippet ?? "",
+            person: person,
+            appType: AppKind(rawValue: cdFollowUp.app ?? "") ?? .whatsapp,
+            note: cdFollowUp.snippet ?? "",
             url: cdFollowUp.webURL,
-            verb: cdFollowUp.verb ?? "",
             dueAt: cdFollowUp.dueAt ?? Date(),
             createdAt: cdFollowUp.createdAt ?? Date(),
             status: Status(rawValue: cdFollowUp.status ?? "") ?? .open,

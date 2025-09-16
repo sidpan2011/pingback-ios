@@ -10,11 +10,13 @@ enum DeepLinkBuilder {
             return URL(string: "tg://msg_url?url=\(encoded)")
         case .sms:
             return URL(string: "sms:&body=\(encoded)")
+        case .slack:
+            return URL(string: "slack://open")
         case .email:
             return URL(string: "mailto:?subject=Follow-up&body=\(encoded)")
         case .instagram:
             return URL(string: "https://www.instagram.com/direct/inbox/")
-        case .other:
+        case .gmail, .outlook, .chrome, .safari:
             return URL(string: "https://example.com?text=\(encoded)")
         }
     }
