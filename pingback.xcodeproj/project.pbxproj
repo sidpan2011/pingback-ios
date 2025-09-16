@@ -7,8 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		B054C8D72E760920007EF4E0 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = B054C8D62E760920007EF4E0 /* RevenueCat */; };
+		B03576562E79D8710090B49F /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = B03576552E79D8710090B49F /* RevenueCat */; };
 		B054C96A2E77FA55007EF4E0 /* share.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B054C9602E77FA55007EF4E0 /* share.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		B0D164EC2E78B12400BF4A5A /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = B0D164EB2E78B12400BF4A5A /* RevenueCat */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -97,6 +98,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B0D164EC2E78B12400BF4A5A /* RevenueCat in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -104,7 +106,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B054C8D72E760920007EF4E0 /* RevenueCat in Frameworks */,
+				B03576562E79D8710090B49F /* RevenueCat in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -175,6 +177,7 @@
 			);
 			name = share;
 			packageProductDependencies = (
+				B0D164EB2E78B12400BF4A5A /* RevenueCat */,
 			);
 			productName = share;
 			productReference = B054C9602E77FA55007EF4E0 /* share.appex */;
@@ -199,7 +202,7 @@
 			);
 			name = pingback;
 			packageProductDependencies = (
-				B054C8D62E760920007EF4E0 /* RevenueCat */,
+				B03576552E79D8710090B49F /* RevenueCat */,
 			);
 			productName = pingback;
 			productReference = B054EAA82E7076AC007F3CAA /* pingback.app */;
@@ -383,54 +386,54 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-                B054C96D2E77FA55007EF4E0 /* Debug */ = {
-                        isa = XCBuildConfiguration;
-                        buildSettings = {
-                                CODE_SIGN_ENTITLEMENTS = share/share.entitlements;
-                                CODE_SIGN_STYLE = Automatic;
-                                CURRENT_PROJECT_VERSION = 1;
-                                DEVELOPMENT_TEAM = 234YZ46Z33;
-                                GENERATE_INFOPLIST_FILE = YES;
-                                INFOPLIST_FILE = share/Info.plist;
-                                INFOPLIST_KEY_CFBundleDisplayName = Pingback;
-                                INFOPLIST_KEY_NSHumanReadableCopyright = "";
-                                LD_RUNPATH_SEARCH_PATHS = (
-                                        "$(inherited)",
-                                        "@executable_path/Frameworks",
-                                        "@executable_path/../../Frameworks",
-                                );
-                                MARKETING_VERSION = 1.0;
-                                PRODUCT_BUNDLE_IDENTIFIER = app.pingback.pingback.share;
-                                PRODUCT_NAME = "$(TARGET_NAME)";
-                                SKIP_INSTALL = YES;
-                                SWIFT_EMIT_LOC_STRINGS = YES;
-                                SWIFT_VERSION = 5.0;
+		B054C96D2E77FA55007EF4E0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = share/share.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 234YZ46Z33;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = share/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Pingback;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.pingback.pingback.share;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
-                B054C96E2E77FA55007EF4E0 /* Release */ = {
-                        isa = XCBuildConfiguration;
-                        buildSettings = {
-                                CODE_SIGN_ENTITLEMENTS = share/share.entitlements;
-                                CODE_SIGN_STYLE = Automatic;
-                                CURRENT_PROJECT_VERSION = 1;
-                                DEVELOPMENT_TEAM = 234YZ46Z33;
-                                GENERATE_INFOPLIST_FILE = YES;
-                                INFOPLIST_FILE = share/Info.plist;
-                                INFOPLIST_KEY_CFBundleDisplayName = Pingback;
-                                INFOPLIST_KEY_NSHumanReadableCopyright = "";
-                                LD_RUNPATH_SEARCH_PATHS = (
-                                        "$(inherited)",
-                                        "@executable_path/Frameworks",
-                                        "@executable_path/../../Frameworks",
-                                );
-                                MARKETING_VERSION = 1.0;
-                                PRODUCT_BUNDLE_IDENTIFIER = app.pingback.pingback.share;
-                                PRODUCT_NAME = "$(TARGET_NAME)";
-                                SKIP_INSTALL = YES;
-                                SWIFT_EMIT_LOC_STRINGS = YES;
-                                SWIFT_VERSION = 5.0;
+		B054C96E2E77FA55007EF4E0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = share/share.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 234YZ46Z33;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = share/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Pingback;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.pingback.pingback.share;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
@@ -554,71 +557,75 @@
 			};
 			name = Release;
 		};
-                B054EACA2E7076AE007F3CAA /* Debug */ = {
-                        isa = XCBuildConfiguration;
-                        buildSettings = {
-                                ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-                                ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-                                CODE_SIGN_ENTITLEMENTS = pingback/pingback.entitlements;
-                                CODE_SIGN_STYLE = Automatic;
-                                CURRENT_PROJECT_VERSION = 1;
-                                DEVELOPMENT_TEAM = 234YZ46Z33;
-                                ENABLE_PREVIEWS = YES;
-                                GENERATE_INFOPLIST_FILE = YES;
-                                INFOPLIST_KEY_CFBundleDisplayName = Pingback;
-                                INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";                                                                                                           
-                                INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-                                INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-                                INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-                                INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";                                                                                           
-                                INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";                      
-                                LD_RUNPATH_SEARCH_PATHS = (
-                                        "$(inherited)",
-                                        "@executable_path/Frameworks",
-                                );
-                                MARKETING_VERSION = 1.0;
-                                PRODUCT_BUNDLE_IDENTIFIER = app.pingback.pingback;
-                                PRODUCT_NAME = "$(TARGET_NAME)";
-                                SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-                                SUPPORTS_MACCATALYST = NO;
-                                SWIFT_EMIT_LOC_STRINGS = YES;
-                                SWIFT_VERSION = 5.0;
-                                TARGETED_DEVICE_FAMILY = "1,2";
-                        };
-                        name = Debug;
+		B054EACA2E7076AE007F3CAA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = pingback/pingback.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 234YZ46Z33;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Pingback;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_LSApplicationQueriesSchemes = "whatsapp tg";
+				INFOPLIST_KEY_NSContactsUsageDescription = "Pingback needs access to your contacts to help you create follow-ups with the right people. This allows you to select contacts when creating reminders and ensures you can reach out to the right person at the right time.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.pingback.pingback;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
 		};
-                B054EACB2E7076AE007F3CAA /* Release */ = {
-                        isa = XCBuildConfiguration;
-                        buildSettings = {
-                                ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-                                ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-                                CODE_SIGN_ENTITLEMENTS = pingback/pingback.entitlements;
-                                CODE_SIGN_STYLE = Automatic;
-                                CURRENT_PROJECT_VERSION = 1;
-                                DEVELOPMENT_TEAM = 234YZ46Z33;
-                                ENABLE_PREVIEWS = YES;
-                                GENERATE_INFOPLIST_FILE = YES;
-                                INFOPLIST_KEY_CFBundleDisplayName = Pingback;
-                                INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";                                                                                                           
-                                INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-                                INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-                                INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-                                INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";                                                                                           
-                                INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";                      
-                                LD_RUNPATH_SEARCH_PATHS = (
-                                        "$(inherited)",
-                                        "@executable_path/Frameworks",
-                                );
-                                MARKETING_VERSION = 1.0;
-                                PRODUCT_BUNDLE_IDENTIFIER = app.pingback.pingback;
-                                PRODUCT_NAME = "$(TARGET_NAME)";
-                                SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-                                SUPPORTS_MACCATALYST = NO;
-                                SWIFT_EMIT_LOC_STRINGS = YES;
-                                SWIFT_VERSION = 5.0;
-                                TARGETED_DEVICE_FAMILY = "1,2";
-                        };
-                        name = Release;
+		B054EACB2E7076AE007F3CAA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = pingback/pingback.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 234YZ46Z33;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Pingback;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_LSApplicationQueriesSchemes = "whatsapp tg";
+				INFOPLIST_KEY_NSContactsUsageDescription = "Pingback needs access to your contacts to help you create follow-ups with the right people. This allows you to select contacts when creating reminders and ensures you can reach out to the right person at the right time.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.pingback.pingback;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
 		};
 		B054EACD2E7076AE007F3CAA /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -750,7 +757,12 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		B054C8D62E760920007EF4E0 /* RevenueCat */ = {
+		B03576552E79D8710090B49F /* RevenueCat */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B054C8D42E7607AB007EF4E0 /* XCRemoteSwiftPackageReference "purchases-ios" */;
+			productName = RevenueCat;
+		};
+		B0D164EB2E78B12400BF4A5A /* RevenueCat */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = B054C8D42E7607AB007EF4E0 /* XCRemoteSwiftPackageReference "purchases-ios" */;
 			productName = RevenueCat;

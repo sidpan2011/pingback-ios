@@ -27,5 +27,7 @@
 	</dict>
 	<key>CFBundleDisplayName</key>
 	<string>Pingback</string>
+	<key>NSContactsUsageDescription</key>
+	<string>Pingback needs access to your contacts to help you create follow-ups with the right people. This allows you to select contacts when creating reminders.</string>
 </dict>
 </plist>

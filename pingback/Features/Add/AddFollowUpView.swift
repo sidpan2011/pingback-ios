@@ -9,12 +9,15 @@ struct AddFollowUpView: View {
     let existingItem: FollowUp?
     
     @State private var notes: String = ""
-    @State private var contactName: String = ""
+    @State private var contactName: String = "" {
+        didSet {
+            print("🔵 AddFollowUpView: contactName changed from '\(oldValue)' to '\(contactName)'")
+        }
+    }
     @State private var isForSelf: Bool = false
     @State private var selectedType: FollowType = .doIt
     @State private var selectedApp: AppKind = .whatsapp
     @State private var url: String = ""
-    @State private var showContactPicker: Bool = false
     @State private var suggestedVerb: String? = nil
     @State private var suggestedDue: Date? = nil
     
@@ -34,152 +37,11 @@ struct AddFollowUpView: View {
     var body: some View {
         NavigationStack {
             List {
-                // Message Group
-                Section {
-                    TextField("Message", text: $notes)
-                        .font(.body)
-                }
-                
-                // Contact Group
-                Section {
-                    HStack {
-                        Text("Self")
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Toggle("", isOn: $isForSelf)
-                    }
-                    
-                    if isForSelf {
-                        HStack {
-                            Text("Self")
-                                .foregroundStyle(.primary)
-                            Spacer()
-                        }
-                    } else {
-                        HStack {
-                            Text("Contact")
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            Button(contactName.isEmpty ? "Choose…" : contactName) {
-                                showContactPicker = true
-                            }
-                            .foregroundStyle(.primary)
-                            .disabled(isForSelf)
-                        }
-                    }
-                }
-                
-                // App and Tag Group
-                Section {
-                    HStack {
-                        Text("App")
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Menu {
-                            ForEach(AppKind.allCases) { app in
-                                Button {
-                                    selectedApp = app
-                                } label: {
-                                    HStack {
-                                        AppLogoView(app, size: 20)
-                                        Text(app.label)
-                                    }
-                                }
-                            }
-                        } label: {
-                            HStack {
-                                AppLogoView(selectedApp, size: 20)
-                                Text(selectedApp.label)
-                            }
-                            .foregroundStyle(.primary)
-                        }
-                    }
-                    
-                    HStack {
-                        Text("Tag")
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Menu {
-                            Button("Do") { selectedType = .doIt }
-                            Button("Waiting-On") { selectedType = .waitingOn }
-                        } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: "number")
-                                    .font(.system(size: 14))
-                                Text(selectedType.title)
-                            }
-                            .foregroundStyle(.primary)
-                        }
-                    }
-                }
-                
-                // URL Group
-                Section {
-                    HStack {
-                        Text("URL")
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        TextField("Optional", text: $url)
-                            .keyboardType(.URL)
-                            .multilineTextAlignment(.trailing)
-                            .foregroundStyle(.primary)
-                    }
-                }
-                
-                // Date and Time Group
-                Section {
-                    // DATE ROW
-                    HStack(alignment: .center, spacing: 12) {
-                        Image(systemName: "calendar")
-                            .foregroundStyle(.primary)
-                            .frame(width: 20)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Date")
-                                .foregroundStyle(.secondary)
-                            if isDateEnabled {
-                                Text(selectedDate.formatted(date: .complete, time: .omitted))
-                                    .font(.footnote)
-                                    .foregroundStyle(.tint)
-                                    .onTapGesture { showDateSheet = true }
-                            }
-                        }
-                        Spacer()
-                        Toggle("", isOn: $isDateEnabled)
-                            .onChange(of: isDateEnabled) { _, on in
-                                if on { showDateSheet = true }
-                            }
-                    }
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        if isDateEnabled { showDateSheet = true }
-                    }
-
-                    // TIME ROW
-                    HStack(alignment: .center, spacing: 12) {
-                        Image(systemName: "clock")
-                            .foregroundStyle(.primary)
-                            .frame(width: 20)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Time")
-                                .foregroundStyle(.secondary)
-                            if isTimeEnabled {
-                                Text(selectedTime.formatted(date: .omitted, time: .shortened))
-                                    .font(.footnote)
-                                    .foregroundStyle(.tint)
-                                    .onTapGesture { showTimeSheet = true }
-                            }
-                        }
-                        Spacer()
-                        Toggle("", isOn: $isTimeEnabled)
-                            .onChange(of: isTimeEnabled) { _, on in
-                                if on { showTimeSheet = true }
-                            }
-                    }
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        if isTimeEnabled { showTimeSheet = true }
-                    }
-                }
+                messageSection
+                contactSection
+                appAndTagSection
+                urlSection
+                dateTimeSection
             }
             .listStyle(.insetGrouped)
             .navigationTitle(existingItem == nil ? "New Follow-up" : "Edit Follow-up")
@@ -193,6 +55,7 @@ struct AddFollowUpView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
+                        print("🚨 AddFollowUpView: Done button tapped!")
                         saveFollowUp()
                     }
                     .disabled(!isSaveEnabled)
@@ -202,9 +65,12 @@ struct AddFollowUpView: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
-        .interactiveDismissDisabled(showContactPicker || showDateSheet || showTimeSheet)
-        .sheet(isPresented: $showContactPicker) {
-            ContactPickerHost(selectedContact: $contactName, isPresented: $showContactPicker)
+        .interactiveDismissDisabled(showDateSheet || showTimeSheet)
+        .onAppear {
+            print("🟢 AddFollowUpView: Main sheet appeared")
+        }
+        .onDisappear {
+            print("🔴 AddFollowUpView: Main sheet disappeared")
         }
         // DATE PICKER SHEET
         .sheet(isPresented: $showDateSheet) {
@@ -274,10 +140,180 @@ struct AddFollowUpView: View {
     }
     
     
+    // MARK: - Sections (split to reduce type-checking complexity)
+    @ViewBuilder
+    private var messageSection: some View {
+        Section {
+            TextField("Message", text: $notes)
+                .font(.body)
+        } header: { EmptyView() } footer: { EmptyView() }
+    }
+
+    @ViewBuilder
+    private var contactSection: some View {
+        Section {
+            HStack {
+                Text("Self")
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Toggle("", isOn: $isForSelf)
+            }
+
+            if isForSelf {
+                HStack {
+                    Text("Self")
+                        .foregroundStyle(.primary)
+                    Spacer()
+                }
+            } else {
+                HStack {
+                    Text("Contact")
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button(contactName.isEmpty ? "Choose…" : contactName) {
+                        print("🟡 AddFollowUpView: Contact picker button tapped")
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                        ContactPickerBridge.shared.present { pickedName in
+                            print("🟣 AddFollowUpView: picked contact = \(pickedName)")
+                            self.contactName = pickedName
+                        }
+                    }
+                    .foregroundStyle(contactName.isEmpty ? .primary : .primary)
+                    .padding(.horizontal, contactName.isEmpty ? 0 : 12)
+                    .padding(.vertical, contactName.isEmpty ? 0 : 6)
+                    // .background(contactName.isEmpty ? Color.clear : Color.primary)
+                    .background(contactName.isEmpty ? Color.clear : Color.secondary.opacity(0.2))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .disabled(isForSelf)
+                }
+            }
+        } header: { EmptyView() } footer: { EmptyView() }
+    }
+
+    @ViewBuilder
+    private var appAndTagSection: some View {
+        Section {
+            HStack {
+                Text("App")
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Menu {
+                    ForEach(AppKind.allCases) { app in
+                        Button {
+                            selectedApp = app
+                        } label: {
+                            HStack {
+                                AppLogoView(app, size: 20)
+                                Text(app.label)
+                            }
+                        }
+                    }
+                } label: {
+                    HStack {
+                        AppLogoView(selectedApp, size: 20)
+                        Text(selectedApp.label)
+                    }
+                    .foregroundStyle(.primary)
+                }
+            }
+
+            HStack {
+                Text("Tag")
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Menu {
+                    Button("Do") { selectedType = .doIt }
+                    Button("Waiting-On") { selectedType = .waitingOn }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "number")
+                            .font(.system(size: 14))
+                        Text(selectedType.title)
+                    }
+                    .foregroundStyle(.primary)
+                }
+            }
+        } header: { EmptyView() } footer: { EmptyView() }
+    }
+
+    @ViewBuilder
+    private var urlSection: some View {
+        Section {
+            HStack {
+                Text("URL")
+                    .foregroundStyle(.secondary)
+                Spacer()
+                TextField("Optional", text: $url)
+                    .keyboardType(.URL)
+                    .multilineTextAlignment(.trailing)
+                    .foregroundStyle(.primary)
+            }
+        } header: { EmptyView() } footer: { EmptyView() }
+    }
+
+    @ViewBuilder
+    private var dateTimeSection: some View {
+        Section {
+            // DATE ROW
+            HStack(alignment: .center, spacing: 12) {
+                Image(systemName: "calendar")
+                    .foregroundStyle(.primary)
+                    .frame(width: 20)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Date")
+                        .foregroundStyle(.secondary)
+                    if isDateEnabled {
+                        Text(selectedDate.formatted(date: .complete, time: .omitted))
+                            .font(.footnote)
+                            .foregroundStyle(.tint)
+                            .onTapGesture { showDateSheet = true }
+                    }
+                }
+                Spacer()
+                Toggle("", isOn: $isDateEnabled)
+                    .onChange(of: isDateEnabled) { _, on in
+                        if on { showDateSheet = true }
+                    }
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if isDateEnabled { showDateSheet = true }
+            }
+
+            // TIME ROW
+            HStack(alignment: .center, spacing: 12) {
+                Image(systemName: "clock")
+                    .foregroundStyle(.primary)
+                    .frame(width: 20)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Time")
+                        .foregroundStyle(.secondary)
+                    if isTimeEnabled {
+                        Text(selectedTime.formatted(date: .omitted, time: .shortened))
+                            .font(.footnote)
+                            .foregroundStyle(.tint)
+                            .onTapGesture { showTimeSheet = true }
+                    }
+                }
+                Spacer()
+                Toggle("", isOn: $isTimeEnabled)
+                    .onChange(of: isTimeEnabled) { _, on in
+                        if on { showTimeSheet = true }
+                    }
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if isTimeEnabled { showTimeSheet = true }
+            }
+        } header: { EmptyView() } footer: { EmptyView() }
+    }
+
     // MARK: - Computed Properties
     
     private var isSaveEnabled: Bool {
-        !notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let enabled = !notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        print("🟠 AddFollowUpView: isSaveEnabled computed = \(enabled) (notes: '\(notes.prefix(20))...')")
+        return enabled
     }
     
     private var composedDue: Date? {
@@ -360,11 +396,29 @@ struct AddFollowUpView: View {
             // Default values for new item
             selectedType = .doIt
             selectedApp = .whatsapp
-            selectedDate = Date()
-            selectedTime = Date()
             suggestedVerb = nil
             suggestedDue = nil
             isForSelf = false
+            
+            // Pre-fill date and time with defaults so user can see the values
+            let now = Date()
+            let defaultDueDate = defaultDue(now: now)
+            let calendar = Calendar.current
+            let today = calendar.startOfDay(for: now)
+            let dueDay = calendar.startOfDay(for: defaultDueDate)
+            
+            if calendar.isDate(dueDay, inSameDayAs: today) {
+                // Same day - enable time only, set to default due time
+                isTimeEnabled = true
+                selectedTime = defaultDueDate
+                selectedDate = now
+            } else {
+                // Different day - enable both date and time
+                isDateEnabled = true
+                isTimeEnabled = true
+                selectedDate = defaultDueDate
+                selectedTime = defaultDueDate
+            }
         }
     }
     
@@ -411,21 +465,41 @@ struct AddFollowUpView: View {
     }
     
     private func saveFollowUp() {
-        guard isSaveEnabled else { return }
+        print("🚨 AddFollowUpView: saveFollowUp() called!")
+        print("🚨 AddFollowUpView: isSaveEnabled = \(isSaveEnabled)")
+        guard isSaveEnabled else { 
+            print("🚨 AddFollowUpView: Save blocked - isSaveEnabled is false")
+            return 
+        }
         
         let finalContact = isForSelf ? "Self" : contactName
         let trimmedURL = url.trimmingCharacters(in: .whitespacesAndNewlines)
         
         if let existingItem = existingItem {
-            // Update existing item
-            var updatedItem = existingItem
-            updatedItem.type = selectedType
-            updatedItem.contactLabel = finalContact
-            updatedItem.app = selectedApp
-            updatedItem.snippet = notes
-            updatedItem.url = trimmedURL.isEmpty ? nil : trimmedURL
-            updatedItem.verb = suggestedVerb ?? "follow up"
-            updatedItem.dueAt = composedDue ?? existingItem.dueAt
+            // Update existing item - create a new FollowUp with updated values
+            let updatedPerson = Person(
+                id: existingItem.person.id,
+                firstName: isForSelf ? "Self" : finalContact,
+                lastName: "",
+                phoneNumbers: existingItem.person.phoneNumbers,
+                telegramUsername: existingItem.person.telegramUsername,
+                slackLink: existingItem.person.slackLink
+            )
+            
+            let updatedItem = FollowUp(
+                id: existingItem.id,
+                type: selectedType,
+                person: updatedPerson,
+                appType: selectedApp,
+                note: notes,
+                url: trimmedURL.isEmpty ? nil : trimmedURL,
+                dueAt: composedDue ?? existingItem.dueAt,
+                createdAt: existingItem.createdAt,
+                status: existingItem.status,
+                lastNudgedAt: existingItem.lastNudgedAt,
+                cadence: existingItem.cadence,
+                templateId: existingItem.templateId
+            )
             
             Task {
                 do {
@@ -452,14 +526,19 @@ struct AddFollowUpView: View {
             print("   - Final type: \(finalType)")
             print("   - Due date: \(due)")
             
+            // Create a person object for the follow-up
+            let person = Person(
+                firstName: isForSelf ? "Self" : (finalContact.isEmpty ? "Unknown" : finalContact),
+                lastName: ""
+            )
+            
             let followUp = FollowUp(
                 id: UUID(),
                 type: finalType,
-                contactLabel: finalContact.isEmpty ? "Unknown" : finalContact,
-                app: selectedApp,
-                snippet: notes.trimmingCharacters(in: .whitespacesAndNewlines),
+                person: person,
+                appType: selectedApp,
+                note: notes.trimmingCharacters(in: .whitespacesAndNewlines),
                 url: trimmedURL.isEmpty ? nil : trimmedURL,
-                verb: verb,
                 dueAt: due,
                 createdAt: Date(),
                 status: .open,
@@ -508,52 +587,6 @@ struct AddFollowUpView: View {
 }
 
 
-struct ContactPickerHost: UIViewControllerRepresentable {
-    @Binding var selectedContact: String
-    @Binding var isPresented: Bool
-
-    func makeUIViewController(context: Context) -> UIViewController {
-        let host = UIViewController()
-        host.view.backgroundColor = .clear
-        return host
-    }
-
-    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
-        // Present once when the SwiftUI sheet becomes visible.
-        if isPresented, context.coordinator.presented == false, uiViewController.presentedViewController == nil {
-            let picker = CNContactPickerViewController()
-            picker.delegate = context.coordinator
-            context.coordinator.presented = true
-            uiViewController.present(picker, animated: true)
-        }
-    }
-
-    func makeCoordinator() -> Coordinator { Coordinator(self) }
-
-    class Coordinator: NSObject, CNContactPickerDelegate {
-        var parent: ContactPickerHost
-        var presented = false
-
-        init(_ parent: ContactPickerHost) { self.parent = parent }
-
-        func contactPicker(_ picker: CNContactPickerViewController, didSelect contact: CNContact) {
-            let full = "\(contact.givenName) \(contact.familyName)".trimmingCharacters(in: .whitespacesAndNewlines)
-            let org = contact.organizationName
-            let name = full.isEmpty ? (org.isEmpty ? "Unknown" : org) : full
-            parent.selectedContact = name
-            presented = false
-            parent.isPresented = false
-            picker.dismiss(animated: true)
-        }
-
-        func contactPickerDidCancel(_ picker: CNContactPickerViewController) {
-            presented = false
-            parent.isPresented = false
-            picker.dismiss(animated: true)
-        }
-    }
-}
-
 #Preview("New Follow-up") {
     AddFollowUpView(store: NewFollowUpStore())
 }
@@ -562,10 +595,9 @@ struct ContactPickerHost: UIViewControllerRepresentable {
     AddFollowUpView(store: NewFollowUpStore(), existingItem: FollowUp(
         id: UUID(),
         type: .doIt,
-        contactLabel: "John Doe",
-        app: .whatsapp,
-        snippet: "Can you share the deck tomorrow 10?",
-        verb: "share",
+        person: Person(firstName: "John", lastName: "Doe", phoneNumbers: ["+1234567890"]),
+        appType: .whatsapp,
+        note: "Can you share the deck tomorrow 10?",
         dueAt: Date().addingTimeInterval(24 * 3600),
         createdAt: Date(),
         status: .open,

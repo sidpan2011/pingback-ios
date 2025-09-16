@@ -10,30 +10,66 @@ struct ShareExtensionHelpers {
     // MARK: - Constants
     /// Single source of truth for known app <-> bundleId mapping
     private static let knownApps: [String: String] = [
-        "com.apple.MobileSMS": "Messages",
-        "com.whatsapp.WhatsApp": "WhatsApp",
-        "com.facebook.Messenger": "Messenger",
-        "com.tinyspeck.chatlyio": "Slack",
-        "com.microsoft.teams": "Microsoft Teams",
-        "com.discord": "Discord",
-        "com.telegram.Telegram": "Telegram",
-        "ph.telegra.Telegraph": "Telegram X",
-        "com.skype.skype": "Skype",
-        "com.apple.mobilemail": "Mail",
-        "com.google.Gmail": "Gmail",
-        "com.microsoft.Office.Outlook": "Outlook",
-        "com.apple.mobilesafari": "Safari",
-        "com.google.chrome.ios": "Chrome",
-        "org.mozilla.ios.Firefox": "Firefox",
-        "com.apple.mobilenotes": "Notes",
-        "com.evernote.iPhone.Evernote": "Evernote",
-        "com.notion.iOS": "Notion",
-        "com.twitter.twitter": "Twitter",
-        "com.facebook.Facebook": "Facebook",
-        "com.linkedin.LinkedIn": "LinkedIn",
-        "com.instagram.app": "Instagram",
-        "com.reddit.Reddit": "Reddit"
-    ]
+    // Messaging
+    "net.whatsapp.WhatsApp": "WhatsApp",         // ✅ canonical WhatsApp
+    "com.facebook.Messenger": "Messenger",
+    "com.apple.MobileSMS": "Messages",
+    "ph.telegra.Telegraph": "Telegram",          // ✅ canonical Telegram
+    "com.discord": "Discord",
+    "com.skype.skype": "Skype",
+    "com.microsoft.teams": "Microsoft Teams",
+    "com.tinyspeck.chatlyio": "Slack",
+
+    // Mail
+    "com.apple.mobilemail": "Mail",
+    "com.google.Gmail": "Gmail",
+    "com.microsoft.Office.Outlook": "Outlook",
+
+    // Browsers
+    "com.apple.mobilesafari": "Safari",
+    "com.google.chrome.ios": "Chrome",
+    "org.mozilla.ios.Firefox": "Firefox",
+
+    // Notes / Productivity
+    "com.apple.mobilenotes": "Notes",
+    "com.evernote.iPhone.Evernote": "Evernote",
+    "com.notion.iOS": "Notion",
+
+    // Social
+    "com.burbn.instagram": "Instagram",          // ✅ canonical Instagram
+    "com.twitter.twitter": "Twitter",
+    "com.facebook.Facebook": "Facebook",
+    "com.linkedin.LinkedIn": "LinkedIn",
+    "com.reddit.Reddit": "Reddit"
+]
+
+/// Map variant/legacy bundle IDs to canonical IDs we use in the app.
+private static func normalize(bundleId: String, appNameHint: String?) -> (appName: String, bundleId: String) {
+    let lower = bundleId.lowercased()
+
+    // Aliases we’ve seen in the wild
+    if lower.contains("whatsapp") {
+        return ("WhatsApp", "net.whatsapp.WhatsApp")
+    }
+    if lower.contains("instagram") || lower.contains("burbn.instagram") {
+        return ("Instagram", "com.burbn.instagram")
+    }
+    if lower.contains("telegram") || lower.contains("ph.telegra") {
+        return ("Telegram", "ph.telegra.Telegraph")
+    }
+    if lower.contains("mobilesafari") || lower == "safari" {
+        return ("Safari", "com.apple.mobilesafari")
+    }
+
+    // If we already know this exact bundle ID, use its pretty name
+    if let name = knownApps[bundleId] {
+        return (name, bundleId)
+    }
+
+    // Fallback to the passed app name if present, else derive from bundle tail
+    let pretty = appNameHint?.isEmpty == false ? appNameHint! : (bundleId.components(separatedBy: ".").last?.capitalized ?? "Unknown App")
+    return (pretty, bundleId)
+}
     
     /// Extract the first URL from text content
     static func extractURL(from text: String) -> String? {
@@ -59,13 +95,12 @@ struct ShareExtensionHelpers {
     // MARK: - Source App Detection
     
     /// Get human-readable app name from bundle identifier
-    static func getAppName(from bundleId: String) -> String {
-        #if DEBUG
-        print("📦 ShareExtension: getAppName(from:) => \(bundleId)")
-        #endif
-        if let name = knownApps[bundleId] { return name }
-        return bundleId.components(separatedBy: ".").last?.capitalized ?? "Unknown App"
-    }
+   static func getAppName(from bundleId: String) -> String {
+    #if DEBUG
+    print("📦 ShareExtension: getAppName(from:) => \(bundleId)")
+    #endif
+    return normalize(bundleId: bundleId, appNameHint: nil).appName
+}
 
     /// DEPRECATED - DO NOT USE for new detection. Use smartAppDetection instead.
     /// This method is kept only for legacy compatibility.
@@ -82,40 +117,221 @@ struct ShareExtensionHelpers {
     /// SINGLE SOURCE OF TRUTH for app detection. All other detection methods are disabled.
     /// Precedence: (1) hard signals in userInfo/title (2) URL/text heuristics. Note: sourceApplicationBundleIdentifier deprecated.
     static func smartAppDetection(text: String?, url: String?, extensionContext: NSExtensionContext?) -> (appName: String, bundleId: String) {
-        let result = resolveSourceApp(extensionContext: extensionContext, text: text, url: url)
+        print("🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀")
+        print("🚀 ************* SMART APP DETECTION STARTED ************* 🚀")
+        print("🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀")
+        print("🚀 Input text: '\(text ?? "nil")'")
+        print("🚀 Input URL: '\(url ?? "nil")'")
+        print("🚀 Extension context: \(extensionContext != nil ? "EXISTS" : "NIL")")
+        print("🚀 Input items count: \(extensionContext?.inputItems.count ?? 0)")
+        print("🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀")
+        
+        print("🔄🔄🔄 ***** CALLING RELIABLE DETECTOR ***** 🔄🔄🔄")
+        let raw = ReliableAppDetector.detectSourceApp(extensionContext: extensionContext, text: text, url: url)
+        print("🔄🔄🔄 ***** RELIABLE DETECTOR COMPLETED ***** 🔄🔄🔄")
+        
+        print("🚀 RAW DETECTOR RESULT: app='\(raw.appName)', bundle='\(raw.bundleId)', confidence='\(raw.confidence)'")
+        
+        // NORMALIZE at the single choke point to ensure canonical bundle IDs
+        let normalized = normalize(bundleId: raw.bundleId, appNameHint: raw.appName)
+        print("🎯 NORMALIZED RESULT: app='\(normalized.appName)', bundle='\(normalized.bundleId)'")
+        print("🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀")
+        
+        // Simple fallback detection for WhatsApp if detector failed
+        var finalResult = normalized
+        if normalized.appName == "Unknown" || normalized.appName == "Unknown App" {
+            print("🚀 FALLBACK DETECTION: Trying simple patterns...")
+            
+            // WhatsApp simple detection
+            if let text = text, text.count > 0 {
+                print("🚀 FALLBACK: Checking text for WhatsApp patterns")
+                if text.lowercased().contains("whatsapp") || text.lowercased().contains("wa.me") {
+                    finalResult = normalize(bundleId: "net.whatsapp.WhatsApp", appNameHint: "WhatsApp")
+                    print("🎯 FALLBACK DETECTED: \(finalResult.appName)")
+                }
+            }
+        }
         
         // Structured logging for ShareResolve event
         let textLength = text?.count ?? 0
         let urlString = url ?? "none"
         let contactString = "none" // Contact detection happens later
-        print("event=ShareResolve app=\(result.appName) bundle=\(result.bundleId) confidence=\(result.confidence) textLen=\(textLength) url=\(urlString) contact=\(contactString)")
+        print("event=ShareResolve app=\(finalResult.appName) bundle=\(finalResult.bundleId) confidence=\(raw.confidence) textLen=\(textLength) url=\(urlString) contact=\(contactString)")
         
-        return (result.appName, result.bundleId)
+        return finalResult
     }
     
     /// Internal resolver - DO NOT CALL DIRECTLY, use smartAppDetection instead
     private static func resolveSourceApp(extensionContext: NSExtensionContext?, text: String?, url: String?) -> (appName: String, bundleId: String, confidence: String) {
+        print("🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭")
+        print("🧭 ************* RESOLVER METHOD STARTED ************* 🧭")
+        print("🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭")
+        print("🧭 Extension context: \(extensionContext != nil ? "EXISTS" : "NIL")")
+        print("🧭 Text: '\(text ?? "NIL")'")
+        print("🧭 URL: '\(url ?? "NIL")'")
+        print("🧭 Input items count: \(extensionContext?.inputItems.count ?? 0)")
+        print("🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭🧭")
+        
         // NOTE: sourceApplicationBundleIdentifier is deprecated and causes crashes in iOS 18+
         // Skipping deprecated API and using content-based detection instead
-        #if DEBUG
-        print("🧭 Resolver: Using content-based detection (sourceApplicationBundleIdentifier deprecated)")
-        #endif
 
-        // 2) Inspect NSExtensionItem title/userInfo for explicit app hints
+        // 2) Enhanced NSExtensionItem inspection with detailed logging
         if let items = extensionContext?.inputItems as? [NSExtensionItem] {
-            for item in items {
+            print("🔍 Resolver: Analyzing \(items.count) extension items")
+            
+            for (index, item) in items.enumerated() {
+                #if DEBUG
+                print("🔍 Resolver: === ITEM \(index) ANALYSIS ===")
+                if let title = item.attributedTitle?.string {
+                    print("🔍 Resolver: Title: '\(title)'")
+                } else {
+                    print("🔍 Resolver: Title: nil")
+                }
+                if let contentText = item.attributedContentText?.string {
+                    print("🔍 Resolver: Content: '\(String(contentText.prefix(100)))'")
+                } else {
+                    print("🔍 Resolver: Content: nil")
+                }
+                if let userInfo = item.userInfo {
+                    print("🔍 Resolver: UserInfo keys: \(Array(userInfo.keys))")
+                    for (key, value) in userInfo {
+                        let keyStr = String(describing: key)
+                        let valueStr = String(describing: value)
+                        print("🔍 Resolver: UserInfo[\(keyStr)] = \(String(valueStr.prefix(200)))")
+                    }
+                } else {
+                    print("🔍 Resolver: UserInfo: nil")
+                }
+                if let attachments = item.attachments {
+                    print("🔍 Resolver: Attachments: \(attachments.count)")
+                    for (attIndex, attachment) in attachments.enumerated() {
+                        print("🔍 Resolver: Attachment \(attIndex) types: \(attachment.registeredTypeIdentifiers)")
+                    }
+                } else {
+                    print("🔍 Resolver: Attachments: nil")
+                }
+                #endif
+                
+                // Enhanced title-based detection
                 if let title = item.attributedTitle?.string.lowercased() {
                     if title.contains("whatsapp") { return ("WhatsApp", "com.whatsapp.WhatsApp", "title") }
                     if title.contains("instagram") { return ("Instagram", "com.instagram.app", "title") }
                     if title.contains("telegram") { return ("Telegram", "com.telegram.Telegram", "title") }
+                    if title.contains("messenger") { return ("Messenger", "com.facebook.Messenger", "title") }
+                    if title.contains("gmail") { return ("Gmail", "com.google.Gmail", "title") }
+                    if title.contains("chrome") { return ("Chrome", "com.google.chrome.ios", "title") }
                     if title.contains("mail") || title.contains("email") { return ("Mail", "com.apple.mobilemail", "title") }
+                    if title.contains("safari") { return ("Safari", "com.apple.mobilesafari", "title") }
+                    if title.contains("messages") { return ("Messages", "com.apple.MobileSMS", "title") }
+                    if title.contains("twitter") || title.contains("tweetie") { return ("X", "com.atebits.Tweetie2", "title") }
                 }
+                
+                // Enhanced userInfo-based detection with more sophisticated analysis
                 if let userInfo = item.userInfo {
-                    let hay = (userInfo.description).lowercased()
-                    if hay.contains("whatsapp") { return ("WhatsApp", "com.whatsapp.WhatsApp", "userInfo") }
-                    if hay.contains("instagram") { return ("Instagram", "com.instagram.app", "userInfo") }
-                    if hay.contains("telegram") { return ("Telegram", "com.telegram.Telegram", "userInfo") }
-                    if hay.contains("mail") || hay.contains("email") { return ("Mail", "com.apple.mobilemail", "userInfo") }
+                    // Check all keys and values for app hints
+                    for (key, value) in userInfo {
+                        let keyStr = String(describing: key).lowercased()
+                        let valueStr = String(describing: value).lowercased()
+                        
+                        // App-specific patterns in keys or values
+                        if keyStr.contains("whatsapp") || valueStr.contains("whatsapp") {
+                            return ("WhatsApp", "com.whatsapp.WhatsApp", "userInfo.key")
+                        }
+                        if keyStr.contains("instagram") || valueStr.contains("instagram") {
+                            return ("Instagram", "com.instagram.app", "userInfo.key")
+                        }
+                        if keyStr.contains("telegram") || valueStr.contains("telegram") {
+                            return ("Telegram", "com.telegram.Telegram", "userInfo.key")
+                        }
+                        if keyStr.contains("messenger") || valueStr.contains("messenger") {
+                            return ("Messenger", "com.facebook.Messenger", "userInfo.key")
+                        }
+                        if keyStr.contains("gmail") || valueStr.contains("gmail") {
+                            return ("Gmail", "com.google.Gmail", "userInfo.key")
+                        }
+                        if keyStr.contains("chrome") || valueStr.contains("chrome") {
+                            return ("Chrome", "com.google.chrome.ios", "userInfo.key")
+                        }
+                        if keyStr.contains("mail") || keyStr.contains("email") || valueStr.contains("mail") || valueStr.contains("email") {
+                            return ("Mail", "com.apple.mobilemail", "userInfo.key")
+                        }
+                        if keyStr.contains("safari") || valueStr.contains("safari") {
+                            return ("Safari", "com.apple.mobilesafari", "userInfo.key")
+                        }
+                        if keyStr.contains("messages") || valueStr.contains("messages") {
+                            return ("Messages", "com.apple.MobileSMS", "userInfo.key")
+                        }
+                        if keyStr.contains("tweetie") || keyStr.contains("twitter") || valueStr.contains("tweetie") || valueStr.contains("twitter") {
+                            return ("X", "com.atebits.Tweetie2", "userInfo.key")
+                        }
+                        
+                        // Check for bundle identifiers in the data
+                        if valueStr.contains("com.whatsapp") {
+                            return ("WhatsApp", "com.whatsapp.WhatsApp", "userInfo.bundle")
+                        }
+                        if valueStr.contains("com.instagram") {
+                            return ("Instagram", "com.instagram.app", "userInfo.bundle")
+                        }
+                        if valueStr.contains("com.telegram") || valueStr.contains("ph.telegra") {
+                            return ("Telegram", "com.telegram.Telegram", "userInfo.bundle")
+                        }
+                        if valueStr.contains("com.facebook.messenger") {
+                            return ("Messenger", "com.facebook.Messenger", "userInfo.bundle")
+                        }
+                        if valueStr.contains("com.google.gmail") {
+                            return ("Gmail", "com.google.Gmail", "userInfo.bundle")
+                        }
+                        if valueStr.contains("com.google.chrome.ios") {
+                            return ("Chrome", "com.google.chrome.ios", "userInfo.bundle")
+                        }
+                        if valueStr.contains("com.apple.mobilemail") {
+                            return ("Mail", "com.apple.mobilemail", "userInfo.bundle")
+                        }
+                        if valueStr.contains("com.apple.mobilesafari") {
+                            return ("Safari", "com.apple.mobilesafari", "userInfo.bundle")
+                        }
+                        if valueStr.contains("com.apple.mobilesms") {
+                            return ("Messages", "com.apple.MobileSMS", "userInfo.bundle")
+                        }
+                        if valueStr.contains("com.atebits.tweetie2") {
+                            return ("X", "com.atebits.Tweetie2", "userInfo.bundle")
+                        }
+                    }
+                }
+                
+                // Check attachment type identifiers for app-specific types
+                if let attachments = item.attachments {
+                    for attachment in attachments {
+                        for typeId in attachment.registeredTypeIdentifiers {
+                            let lowerTypeId = typeId.lowercased()
+                            #if DEBUG
+                            print("🔍 Resolver: Checking type identifier: \(typeId)")
+                            #endif
+                            
+                            // App-specific type identifiers
+                            if lowerTypeId.contains("whatsapp") {
+                                return ("WhatsApp", "com.whatsapp.WhatsApp", "attachment.type")
+                            }
+                            if lowerTypeId.contains("instagram") {
+                                return ("Instagram", "com.instagram.app", "attachment.type")
+                            }
+                            if lowerTypeId.contains("telegram") {
+                                return ("Telegram", "com.telegram.Telegram", "attachment.type")
+                            }
+                            if lowerTypeId.contains("messenger") {
+                                return ("Messenger", "com.facebook.Messenger", "attachment.type")
+                            }
+                            if lowerTypeId.contains("gmail") {
+                                return ("Gmail", "com.google.Gmail", "attachment.type")
+                            }
+                            if lowerTypeId.contains("chrome") {
+                                return ("Chrome", "com.google.chrome.ios", "attachment.type")
+                            }
+                            if lowerTypeId.contains("mail") || lowerTypeId.contains("email") {
+                                return ("Mail", "com.apple.mobilemail", "attachment.type")
+                            }
+                        }
+                    }
                 }
             }
         }

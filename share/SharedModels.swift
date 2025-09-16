@@ -1,16 +1,7 @@
 import Foundation
 import Contacts
 
-enum FollowType: String, CaseIterable, Identifiable, Codable {
-    case doIt = "DO"
-    case waitingOn = "WAITING_ON"
-    var id: String { rawValue }
-    var title: String { self == .doIt ? "Do" : "Waiting-On" }
-}
-
-enum Status: String, CaseIterable, Codable {
-    case open, done, snoozed
-}
+// MARK: - Shared Enums and Types
 
 enum AppKind: String, CaseIterable, Identifiable, Codable {
     case whatsapp, telegram, slack, instagram, sms, email, gmail, outlook, chrome, safari
@@ -108,6 +99,19 @@ enum Cadence: String, CaseIterable, Identifiable, Codable {
         }
     }
 }
+
+enum FollowType: String, CaseIterable, Identifiable, Codable {
+    case doIt = "DO"
+    case waitingOn = "WAITING_ON"
+    var id: String { rawValue }
+    var title: String { self == .doIt ? "Do" : "Waiting-On" }
+}
+
+enum Status: String, CaseIterable, Codable {
+    case open, done, snoozed
+}
+
+// MARK: - Shared Models
 
 struct Person: Identifiable, Codable, Equatable {
     let id: UUID
@@ -237,5 +241,86 @@ struct FollowUp: Identifiable, Equatable, Codable {
     
     var isUpcoming: Bool {
         return status == .open && dueAt > Calendar.current.startOfDay(for: Date().addingTimeInterval(24*60*60))
+    }
+}
+
+// MARK: - Deep Link Helper
+
+struct DeepLinkHelper {
+    
+    /// Open a chat for the given follow-up with the specified message
+    /// - Parameters:
+    ///   - followUp: The follow-up containing person and app information
+    ///   - person: The person to message (can override followUp.person)
+    ///   - message: The message to prefill
+    /// - Returns: True if the deep link was attempted, false if not supported
+    @discardableResult
+    static func openChat(for followUp: FollowUp, person: Person? = nil, message: String) -> Bool {
+        let targetPerson = person ?? followUp.person
+        return openChat(appType: followUp.appType, person: targetPerson, message: message)
+    }
+    
+    /// Open a chat for the specified app type, person, and message
+    /// - Parameters:
+    ///   - appType: The messaging app to use
+    ///   - person: The person to message
+    ///   - message: The message to prefill
+    /// - Returns: True if the deep link was attempted, false if not supported
+    @discardableResult
+    static func openChat(appType: AppKind, person: Person, message: String) -> Bool {
+        // For share extension, we can't actually open URLs
+        // This is a placeholder that would be used by the main app
+        print("📱 Would open \(appType.label) chat with \(person.displayName): \(message)")
+        return true
+    }
+    
+    /// Validate that a person has the required information for the app type
+    static func validatePerson(_ person: Person, for appType: AppKind) -> Bool {
+        switch appType {
+        case .whatsapp, .sms:
+            return person.e164PhoneNumber != nil
+        case .telegram:
+            return person.telegramUsername != nil
+        case .slack:
+            return person.slackLink != nil
+        case .instagram, .email, .gmail, .outlook, .chrome, .safari:
+            return false // Not supported for messaging
+        }
+    }
+    
+    /// Get the required information for a person based on the app type
+    static func getRequiredPersonInfo(for appType: AppKind) -> String {
+        switch appType {
+        case .whatsapp, .sms:
+            return "Phone number required"
+        case .telegram:
+            return "Telegram username required"
+        case .slack:
+            return "Slack universal link required"
+        case .instagram, .email, .gmail, .outlook, .chrome, .safari:
+            return "Not supported for messaging"
+        }
+    }
+}
+
+// MARK: - Notification Service (Stub for Share Extension)
+
+struct NotificationService {
+    static let shared = NotificationService()
+    
+    func scheduleNotification(for followUp: FollowUp) async throws {
+        // This is a stub for the share extension
+        // The actual scheduling will happen when the main app processes shared data
+        print("📅 Would schedule notification for follow-up: \(followUp.id)")
+    }
+}
+
+// MARK: - Analytics Service (Stub for Share Extension)
+
+struct AnalyticsService {
+    static let shared = AnalyticsService()
+    
+    func trackFollowUpCreated(app: AppKind, cadence: Cadence, hasTemplate: Bool) {
+        print("📊 Analytics: follow_up_created - app=\(app.rawValue) cadence=\(cadence.rawValue) hasTemplate=\(hasTemplate)")
     }
 }

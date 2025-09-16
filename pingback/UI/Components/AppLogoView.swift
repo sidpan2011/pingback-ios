@@ -1,11 +1,11 @@
 import SwiftUI
 
 struct AppLogoView: View {
-    let app: AppKind
+    let app: AppType
     let size: CGFloat
     @State private var customImageExists = false
     
-    init(_ app: AppKind, size: CGFloat = 24) {
+    init(_ app: AppType, size: CGFloat = 24) {
         self.app = app
         self.size = size
     }
@@ -47,10 +47,8 @@ struct AppLogoView: View {
         HStack(spacing: 16) {
             AppLogoView(.whatsapp, size: 32)
             AppLogoView(.telegram, size: 32)
-            AppLogoView(.email, size: 32)
             AppLogoView(.sms, size: 32)
-            AppLogoView(.instagram, size: 32)
-            AppLogoView(.other, size: 32)
+            AppLogoView(.slack, size: 32)
         }
         
         Text("App Logos (32pt)")
@@ -60,10 +58,8 @@ struct AppLogoView: View {
         HStack(spacing: 16) {
             AppLogoView(.whatsapp, size: 24)
             AppLogoView(.telegram, size: 24)
-            AppLogoView(.email, size: 24)
             AppLogoView(.sms, size: 24)
-            AppLogoView(.instagram, size: 24)
-            AppLogoView(.other, size: 24)
+            AppLogoView(.slack, size: 24)
         }
         
         Text("App Logos (24pt)")
