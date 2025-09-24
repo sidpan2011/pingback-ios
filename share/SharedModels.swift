@@ -303,6 +303,206 @@ struct DeepLinkHelper {
     }
 }
 
+// MARK: - Phone Number Service (Shared)
+
+/// Shared phone number normalization service for both main app and share extension
+struct SharedPhoneNumberService {
+    
+    /// Normalize phone number to E.164 format using region-aware logic
+    static func normalizeToE164(
+        _ phoneNumber: String,
+        contact: CNContact? = nil,
+        userRegion: String? = nil
+    ) -> String? {
+        
+        let digitsOnly = phoneNumber.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
+        
+        // Already has country code (starts with +)
+        if phoneNumber.hasPrefix("+") && digitsOnly.count >= 10 {
+            return "+\(digitsOnly)"
+        }
+        
+        // Determine the appropriate region for formatting
+        let region = determineRegion(for: phoneNumber, contact: contact, userRegion: userRegion)
+        let countryCode = getCountryCode(for: region)
+        
+        // Apply region-specific formatting rules
+        let formatted = formatWithCountryCode(digitsOnly, countryCode: countryCode, region: region)
+        
+        print("📞 SharedPhoneNumberService: Normalized '\(phoneNumber)' -> '\(formatted ?? "nil")' (region: \(region))")
+        return formatted
+    }
+    
+    private static func determineRegion(
+        for phoneNumber: String,
+        contact: CNContact?,
+        userRegion: String?
+    ) -> String {
+        
+        // 1. Check if phone number already has country code
+        if phoneNumber.hasPrefix("+") {
+            if let countryCode = extractCountryCodeFromE164(phoneNumber),
+               let region = getRegion(for: countryCode) {
+                return region
+            }
+        }
+        
+        // 2. Use contact's postal address country
+        if let contact = contact {
+            if let region = getRegionFromContact(contact) {
+                return region
+            }
+        }
+        
+        // 3. Use device region (current locale)
+        if let deviceRegion = getDeviceRegion() {
+            return deviceRegion
+        }
+        
+        // 4. Use user-specified default region from settings
+        if let userRegion = userRegion {
+            return userRegion
+        }
+        
+        // 5. Final fallback - use device locale
+        return Locale.current.region?.identifier ?? "US"
+    }
+    
+    private static func extractCountryCodeFromE164(_ phoneNumber: String) -> String? {
+        let digitsOnly = phoneNumber.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
+        
+        // Common country codes (ordered by length, longest first to avoid conflicts)
+        let countryCodes = [
+            "1": "US", // US/Canada
+            "44": "GB", // UK
+            "91": "IN", // India
+            "49": "DE", // Germany
+            "33": "FR", // France
+            "81": "JP", // Japan
+            "86": "CN", // China
+            "61": "AU", // Australia
+            "55": "BR", // Brazil
+            "7": "RU", // Russia
+        ]
+        
+        // Try to match country codes (check longer codes first)
+        for (code, region) in countryCodes.sorted(by: { $0.key.count > $1.key.count }) {
+            if digitsOnly.hasPrefix(code) {
+                return region
+            }
+        }
+        
+        return nil
+    }
+    
+    private static func getRegionFromContact(_ contact: CNContact) -> String? {
+        // Check postal addresses for country
+        for address in contact.postalAddresses {
+            let isoCode = address.value.isoCountryCode
+            if !isoCode.isEmpty {
+                return isoCode.uppercased()
+            }
+        }
+        return nil
+    }
+    
+    private static func getDeviceRegion() -> String? {
+        return Locale.current.region?.identifier
+    }
+    
+    private static func getCountryCode(for region: String) -> String {
+        switch region.uppercased() {
+        case "US", "CA": return "1"
+        case "GB": return "44"
+        case "IN": return "91"
+        case "DE": return "49"
+        case "FR": return "33"
+        case "JP": return "81"
+        case "CN": return "86"
+        case "AU": return "61"
+        case "BR": return "55"
+        case "RU": return "7"
+        case "IT": return "39"
+        case "ES": return "34"
+        case "NL": return "31"
+        case "MX": return "52"
+        case "AR": return "54"
+        case "KR": return "82"
+        case "TH": return "66"
+        case "MY": return "60"
+        case "SG": return "65"
+        case "ID": return "62"
+        case "PH": return "63"
+        case "ZA": return "27"
+        case "EG": return "20"
+        case "NG": return "234"
+        case "KE": return "254"
+        case "ET": return "251"
+        case "GH": return "233"
+        default: return "1" // Default fallback - but this should rarely be used
+        }
+    }
+    
+    private static func getRegion(for countryCode: String) -> String? {
+        switch countryCode {
+        case "1": return "US" // Could be CA, but default to US
+        case "44": return "GB"
+        case "91": return "IN"
+        case "49": return "DE"
+        case "33": return "FR"
+        case "81": return "JP"
+        case "86": return "CN"
+        case "61": return "AU"
+        case "55": return "BR"
+        case "7": return "RU"
+        default: return nil
+        }
+    }
+    
+    private static func formatWithCountryCode(
+        _ digitsOnly: String,
+        countryCode: String,
+        region: String
+    ) -> String? {
+        
+        // Validate digit count for region
+        let expectedLength = getExpectedLength(for: region, countryCode: countryCode)
+        
+        if digitsOnly.count == expectedLength {
+            return "+\(countryCode)\(digitsOnly)"
+        } else if digitsOnly.count == expectedLength + countryCode.count {
+            // Already includes country code digits
+            return "+\(digitsOnly)"
+        }
+        
+        return nil
+    }
+    
+    private static func getExpectedLength(for region: String, countryCode: String) -> Int {
+        switch region.uppercased() {
+        case "US", "CA": return 10 // 10 digits after +1
+        case "GB": return 10 // 10 digits after +44
+        case "IN": return 10 // 10 digits after +91
+        case "DE": return 11 // 11 digits after +49
+        case "FR": return 9 // 9 digits after +33
+        case "JP": return 10 // 10 digits after +81
+        case "CN": return 11 // 11 digits after +86
+        case "AU": return 9 // 9 digits after +61
+        case "BR": return 11 // 11 digits after +55
+        default: return 10 // Default assumption
+        }
+    }
+    
+    /// Validate that a phone number is suitable for WhatsApp
+    static func validateForWhatsApp(_ phoneNumber: String) -> Bool {
+        guard let e164 = normalizeToE164(phoneNumber) else { return false }
+        
+        // WhatsApp requires E.164 format with country code
+        let digitsOnly = e164.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
+        return digitsOnly.count >= 10 && e164.hasPrefix("+")
+    }
+}
+
 // MARK: - Notification Service (Stub for Share Extension)
 
 struct NotificationService {

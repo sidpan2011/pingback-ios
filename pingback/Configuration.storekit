@@ -4,7 +4,36 @@
 
   ],
   "products" : [
-
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : false,
+      "internalID" : "6670588395",
+      "localizations" : [
+        {
+          "description" : "Get unlimited follow-ups and premium features",
+          "displayName" : "Pro Monthly",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "app.pingback.pingback.pro_monthly",
+      "referenceName" : "Pro Monthly",
+      "type" : "RecurringSubscription"
+    },
+    {
+      "displayPrice" : "49.99",
+      "familyShareable" : false,
+      "internalID" : "6670588396",
+      "localizations" : [
+        {
+          "description" : "Get unlimited follow-ups and premium features - Best Value!",
+          "displayName" : "Pro Yearly",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "app.pingback.pingback.pro_yearly",
+      "referenceName" : "Pro Yearly",
+      "type" : "RecurringSubscription"
+    }
   ],
   "settings" : {
     "_applicationInternalID" : "6670588394",

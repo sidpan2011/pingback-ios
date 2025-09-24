@@ -14,6 +14,7 @@ struct AddFollowUpView: View {
             print("🔵 AddFollowUpView: contactName changed from '\(oldValue)' to '\(contactName)'")
         }
     }
+    @State private var selectedPerson: Person?
     @State private var isForSelf: Bool = false
     @State private var selectedType: FollowType = .doIt
     @State private var selectedApp: AppKind = .whatsapp
@@ -173,12 +174,16 @@ struct AddFollowUpView: View {
                     Button(contactName.isEmpty ? "Choose…" : contactName) {
                         print("🟡 AddFollowUpView: Contact picker button tapped")
                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                        ContactPickerBridge.shared.present { pickedName in
-                            print("🟣 AddFollowUpView: picked contact = \(pickedName)")
-                            self.contactName = pickedName
+                        ContactPickerBridge.shared.presentForPerson { pickedPerson in
+                            print("🟣 AddFollowUpView: picked person = \(pickedPerson?.displayName ?? "nil")")
+                            if let person = pickedPerson {
+                                self.selectedPerson = person
+                                self.contactName = person.displayName
+                                print("🟣 AddFollowUpView: Person has \(person.phoneNumbers.count) phone numbers")
+                            }
                         }
                     }
-                    .foregroundStyle(contactName.isEmpty ? .primary : .primary)
+                    .foregroundStyle(.tint)
                     .padding(.horizontal, contactName.isEmpty ? 0 : 12)
                     .padding(.vertical, contactName.isEmpty ? 0 : 6)
                     // .background(contactName.isEmpty ? Color.clear : Color.primary)
@@ -254,34 +259,48 @@ struct AddFollowUpView: View {
     @ViewBuilder
     private var dateTimeSection: some View {
         Section {
-            // DATE ROW
-            HStack(alignment: .center, spacing: 12) {
-                Image(systemName: "calendar")
-                    .foregroundStyle(.primary)
-                    .frame(width: 20)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Date")
-                        .foregroundStyle(.secondary)
-                    if isDateEnabled {
-                        Text(selectedDate.formatted(date: .complete, time: .omitted))
+            // Show completion date for completed follow-ups, otherwise show date/time pickers
+            if let item = existingItem, item.status == .done {
+                // COMPLETED ROW
+                HStack(alignment: .center, spacing: 12) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                        .frame(width: 20)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Completed")
+                            .foregroundStyle(.secondary)
+                        Text(item.lastNudgedAt?.formatted(date: .abbreviated, time: .shortened) ?? Date().formatted(date: .abbreviated, time: .shortened))
                             .font(.footnote)
-                            .foregroundStyle(.tint)
-                            .onTapGesture { showDateSheet = true }
+                            .foregroundStyle(.green)
                     }
+                    Spacer()
                 }
-                Spacer()
-                Toggle("", isOn: $isDateEnabled)
-                    .onChange(of: isDateEnabled) { _, on in
-                        if on { showDateSheet = true }
+            } else {
+                // DATE ROW (for non-completed follow-ups)
+                HStack(alignment: .center, spacing: 12) {
+                    Image(systemName: "calendar")
+                        .foregroundStyle(.primary)
+                        .frame(width: 20)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Date")
+                            .foregroundStyle(.secondary)
+                        if isDateEnabled {
+                            Text(selectedDate.formatted(date: .complete, time: .omitted))
+                                .font(.footnote)
+                                .foregroundStyle(.tint)
+                                .onTapGesture { showDateSheet = true }
+                        }
                     }
-            }
-            .contentShape(Rectangle())
-            .onTapGesture {
-                if isDateEnabled { showDateSheet = true }
-            }
+                    Spacer()
+                    Toggle("", isOn: $isDateEnabled)
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if isDateEnabled { showDateSheet = true }
+                }
 
-            // TIME ROW
-            HStack(alignment: .center, spacing: 12) {
+                // TIME ROW (for non-completed follow-ups)
+                HStack(alignment: .center, spacing: 12) {
                 Image(systemName: "clock")
                     .foregroundStyle(.primary)
                     .frame(width: 20)
@@ -297,15 +316,19 @@ struct AddFollowUpView: View {
                 }
                 Spacer()
                 Toggle("", isOn: $isTimeEnabled)
-                    .onChange(of: isTimeEnabled) { _, on in
-                        if on { showTimeSheet = true }
-                    }
             }
             .contentShape(Rectangle())
             .onTapGesture {
                 if isTimeEnabled { showTimeSheet = true }
             }
-        } header: { EmptyView() } footer: { EmptyView() }
+            }
+        } header: { 
+            EmptyView() 
+        } footer: {
+            Text(defaultTimeFooterText)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
     }
 
     // MARK: - Computed Properties
@@ -407,17 +430,18 @@ struct AddFollowUpView: View {
             let today = calendar.startOfDay(for: now)
             let dueDay = calendar.startOfDay(for: defaultDueDate)
             
+            // Always set the date and time values first
+            selectedDate = defaultDueDate
+            selectedTime = defaultDueDate
+            
             if calendar.isDate(dueDay, inSameDayAs: today) {
-                // Same day - enable time only, set to default due time
+                // Same day - enable time only, but show today's date
                 isTimeEnabled = true
-                selectedTime = defaultDueDate
-                selectedDate = now
+                isDateEnabled = true  // Enable date so user can see it's set to today
             } else {
                 // Different day - enable both date and time
                 isDateEnabled = true
                 isTimeEnabled = true
-                selectedDate = defaultDueDate
-                selectedTime = defaultDueDate
             }
         }
     }
@@ -526,8 +550,8 @@ struct AddFollowUpView: View {
             print("   - Final type: \(finalType)")
             print("   - Due date: \(due)")
             
-            // Create a person object for the follow-up
-            let person = Person(
+            // Use selectedPerson if available (contains phone numbers), otherwise create from name
+            let person = selectedPerson ?? Person(
                 firstName: isForSelf ? "Self" : (finalContact.isEmpty ? "Unknown" : finalContact),
                 lastName: ""
             )
@@ -570,18 +594,39 @@ struct AddFollowUpView: View {
         dismiss()
     }
     
-    /// Default due date calculation
+    /// Default due date calculation - matches ShareExtensionViewModel logic
     private func defaultDue(now: Date) -> Date {
         let calendar = Calendar.current
         let hour = calendar.component(.hour, from: now)
         
-        if hour < store.settings.eodHour {
-            // Before EOD, due today at EOD
-            return calendar.date(bySettingHour: store.settings.eodHour, minute: 0, second: 0, of: now) ?? now
-        } else {
-            // After EOD, due tomorrow at morning hour
+        // Match ShareExtensionViewModel logic: if before 6pm -> today 6pm, else -> tomorrow 9am
+        // Also respect quiet hours (no schedule 22:00–07:00; roll to next morning 09:00)
+        if hour >= 22 || hour < 7 {
+            // After 10pm or before 7am -> Tomorrow 9am
             let tomorrow = calendar.date(byAdding: .day, value: 1, to: now) ?? now
-            return calendar.date(bySettingHour: store.settings.morningHour, minute: 0, second: 0, of: tomorrow) ?? now
+            let tomorrow9am = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: tomorrow) ?? tomorrow
+            return tomorrow9am
+        } else if hour < 18 {
+            // Before 6pm -> Today 6pm (matches ShareExtensionViewModel logic)
+            let today6pm = calendar.date(bySettingHour: 18, minute: 0, second: 0, of: now) ?? now
+            return today6pm
+        } else {
+            // After 6pm -> Tomorrow 9am
+            let tomorrow = calendar.date(byAdding: .day, value: 1, to: now) ?? now
+            let tomorrow9am = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: tomorrow) ?? tomorrow
+            return tomorrow9am
+        }
+    }
+    
+    /// Footer text for date/time section - matches ShareExtensionViewModel
+    private var defaultTimeFooterText: String {
+        let calendar = Calendar.current
+        let hour = calendar.component(.hour, from: Date())
+        
+        if hour >= 9 && hour < 18 {
+            return "By default we create the follow-up for today at 6:00 PM"
+        } else {
+            return "By default we create the follow-up for tomorrow at 9:00 AM"
         }
     }
 }

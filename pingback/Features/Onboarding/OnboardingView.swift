@@ -2,6 +2,7 @@ import SwiftUI
 
 struct OnboardingView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var scheme
     @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = false
     @State private var currentStep = 0
     
@@ -59,10 +60,10 @@ struct OnboardingView: View {
                             Text("Next")
                                 .font(.headline)
                                 .fontWeight(.semibold)
-                                .foregroundColor(.white)
+                                .foregroundStyle(scheme == .dark ? Color.black : Color.white)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 50)
-                                .background(Color.primary)
+                                .background(scheme == .dark ? Color.white : Color.black)
                                 .clipShape(RoundedRectangle(cornerRadius: 12))
                         }
                         
@@ -82,10 +83,10 @@ struct OnboardingView: View {
                             Text("Let's Go!")
                                 .font(.headline)
                                 .fontWeight(.semibold)
-                                .foregroundColor(.white)
+                                .foregroundStyle(scheme == .dark ? Color.black : Color.white)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 50)
-                                .background(Color.primary)
+                                .background(scheme == .dark ? Color.white : Color.black)
                                 .clipShape(RoundedRectangle(cornerRadius: 12))
                         }
                     }

@@ -9,7 +9,7 @@ class SubscriptionManager: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     
-    private let productIds = ["pro.monthly", "pro.yearly"]
+    private let productIds = ["app.pingback.pingback.pro_monthly", "app.pingback.pingback.pro_yearly"]
     
     init() {
         Task {
@@ -35,7 +35,7 @@ class SubscriptionManager: ObservableObject {
     func updateSubscriptionStatus() async {
         for await result in Transaction.currentEntitlements {
             if case .verified(let transaction) = result {
-                if transaction.productID == "pro.monthly" || transaction.productID == "pro.yearly" {
+                if transaction.productID == "app.pingback.pingback.pro_monthly" || transaction.productID == "app.pingback.pingback.pro_yearly" {
                     isPro = true
                     return
                 }
@@ -90,12 +90,12 @@ class SubscriptionManager: ObservableObject {
     
     // Helper to get monthly product
     var monthlyProduct: Product? {
-        products.first { $0.id == "pro.monthly" }
+        products.first { $0.id == "app.pingback.pingback.pro_monthly" }
     }
     
     // Helper to get yearly product
     var yearlyProduct: Product? {
-        products.first { $0.id == "pro.yearly" }
+        products.first { $0.id == "app.pingback.pingback.pro_yearly" }
     }
     
     // Calculate savings for yearly vs monthly

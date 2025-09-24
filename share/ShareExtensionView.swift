@@ -29,7 +29,7 @@ struct ShareExtensionView: View {
                     Button("Cancel") {
                         viewModel.cancel()
                     }
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(.tint)
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
@@ -60,7 +60,13 @@ struct ShareExtensionView: View {
             Text("Added follow-up to Pingback")
         }
         .sheet(isPresented: $viewModel.showContactPicker) {
-            ContactPickerHost(selectedContact: $viewModel.contactName, isPresented: $viewModel.showContactPicker)
+            ContactPickerHost(
+                selectedContact: $viewModel.contactName, 
+                isPresented: $viewModel.showContactPicker,
+                onPersonSelected: { person in
+                    viewModel.selectedPerson = person
+                }
+            )
         }
         // DATE PICKER SHEET
         .sheet(isPresented: $viewModel.showDateSheet) {
@@ -141,7 +147,7 @@ struct ShareExtensionView: View {
                 Button(viewModel.contactName.isEmpty ? "Choose…" : viewModel.contactName) {
                     viewModel.showContactPicker = true
                 }
-                .foregroundStyle(.primary)
+                .foregroundStyle(.tint)
                 .padding(.horizontal, viewModel.contactName.isEmpty ? 0 : 12)
                 .padding(.vertical, viewModel.contactName.isEmpty ? 0 : 6)
                 .background(viewModel.contactName.isEmpty ? Color.clear : Color.secondary.opacity(0.2))
@@ -160,20 +166,14 @@ struct ShareExtensionView: View {
                 Menu {
                     ForEach(AppKind.allCases) { app in
                         Button {
-                            viewModel.selectedApp = app
+                            // selectedApp is constant (WhatsApp-only mode)
                         } label: {
-                            HStack {
-                                AppLogoView(app, size: 20)
-                                Text(app.label)
-                            }
+                            Text(app.label)
                         }
                     }
                 } label: {
-                    HStack {
-                        AppLogoView(viewModel.selectedApp, size: 20)
-                        Text(viewModel.selectedApp.label)
-                    }
-                    .foregroundStyle(.primary)
+                    Text(viewModel.selectedApp.label)
+                        .foregroundStyle(.primary)
                 }
             }
         }
@@ -199,9 +199,6 @@ struct ShareExtensionView: View {
                 }
                 Spacer()
                 Toggle("", isOn: $viewModel.isDateEnabled)
-                    .onChange(of: viewModel.isDateEnabled) { _, on in
-                        if on { viewModel.showDateSheet = true }
-                    }
             }
             .contentShape(Rectangle())
             .onTapGesture {
@@ -225,9 +222,6 @@ struct ShareExtensionView: View {
                 }
                 Spacer()
                 Toggle("", isOn: $viewModel.isTimeEnabled)
-                    .onChange(of: viewModel.isTimeEnabled) { _, on in
-                        if on { viewModel.showTimeSheet = true }
-                    }
             }
             .contentShape(Rectangle())
             .onTapGesture {
@@ -360,6 +354,7 @@ struct DateTimePickerSheet: View {
 struct ContactPickerHost: UIViewControllerRepresentable {
     @Binding var selectedContact: String
     @Binding var isPresented: Bool
+    let onPersonSelected: (Person?) -> Void
 
     func makeUIViewController(context: Context) -> CNContactPickerViewController {
         let picker = CNContactPickerViewController()
@@ -383,14 +378,60 @@ struct ContactPickerHost: UIViewControllerRepresentable {
             let org = contact.organizationName
             let name = full.isEmpty ? (org.isEmpty ? "Unknown" : org) : full
             
-            print("🔵 Contact selected: \(name)")
-            print("🔵 Before update - parent.selectedContact: '\(parent.selectedContact)'")
+            // DETAILED LOGGING FOR DEBUGGING
+            print("📱 ===== CONTACT PICKER DEBUG =====")
+            print("📱 Contact selected: \(name)")
+            print("📱 Given Name: '\(contact.givenName)'")
+            print("📱 Family Name: '\(contact.familyName)'")
+            print("📱 Organization: '\(contact.organizationName)'")
+            print("📱 Phone Numbers Count: \(contact.phoneNumbers.count)")
+            
+            for (index, phoneNumber) in contact.phoneNumbers.enumerated() {
+                let label = CNLabeledValue<CNPhoneNumber>.localizedString(forLabel: phoneNumber.label ?? "")
+                let number = phoneNumber.value.stringValue
+                print("📱 Phone \(index + 1): \(label) = '\(number)'")
+            }
+            
+            print("📱 Email Count: \(contact.emailAddresses.count)")
+            for (index, email) in contact.emailAddresses.enumerated() {
+                let label = CNLabeledValue<NSString>.localizedString(forLabel: email.label ?? "")
+                let address = email.value as String
+                print("📱 Email \(index + 1): \(label) = '\(address)'")
+            }
+            
+            print("📱 Before update - parent.selectedContact: '\(parent.selectedContact)'")
+            print("📱 ===== END CONTACT DEBUG =====")
+            
+            // Create Person object with phone numbers
+            let phoneNumbers = contact.phoneNumbers.map { $0.value.stringValue }
+            let person: Person?
+            
+            if !phoneNumbers.isEmpty {
+                // Use first phone number and normalize it
+                let phoneNumber = phoneNumbers[0]
+                let e164PhoneNumber = SharedPhoneNumberService.normalizeToE164(phoneNumber, contact: contact) ?? phoneNumber
+                
+                person = Person(
+                    firstName: contact.givenName.isEmpty ? name : contact.givenName,
+                    lastName: contact.familyName,
+                    phoneNumbers: [e164PhoneNumber]
+                )
+                print("📱 Created Person with phone: \(e164PhoneNumber)")
+            } else {
+                person = nil
+                print("📱 No phone numbers found - Person is nil")
+            }
             
             // Update immediately on main thread
             DispatchQueue.main.async {
                 print("🔵 Updating selectedContact to: '\(name)'")
                 self.parent.selectedContact = name
                 print("🔵 After update - parent.selectedContact: '\(self.parent.selectedContact)'")
+                
+                // Set the Person object with phone numbers
+                self.parent.onPersonSelected(person)
+                print("🔵 Called onPersonSelected with person: \(person?.displayName ?? "nil")")
+                
                 self.parent.isPresented = false
                 print("🔵 ContactPicker dismissed")
             }

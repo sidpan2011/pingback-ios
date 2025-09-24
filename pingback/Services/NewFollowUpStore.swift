@@ -246,6 +246,56 @@ final class NewFollowUpStore: ObservableObject {
         print("   - Current follow-ups count after add: \(await followUps.count)")
     }
     
+    /// Add a new follow-up using a Person object (preserves phone numbers)
+    func addWithPerson(from text: String,
+                      type: FollowType,
+                      person: Person,
+                      app: AppKind,
+                      url: String? = nil,
+                      overrideDue: Date? = nil,
+                      now: Date = .now) async throws {
+        print("🏪 NewFollowUpStore.addWithPerson() called with:")
+        print("   - Text: \(String(text.prefix(100)))")
+        print("   - Type: \(type)")
+        print("   - Person: \(person.displayName) with \(person.phoneNumbers.count) phone numbers")
+        print("   - App: \(app)")
+        print("   - URL: \(url ?? "nil")")
+        print("   - Current follow-ups count before add: \(await followUps.count)")
+        
+        let parsed = Parser.shared.parse(text: text, now: now, eodHour: settings.eodHour, morningHour: settings.morningHour)
+        let due = overrideDue ?? parsed?.dueAt ?? defaultDue(now: now)
+        let verb = parsed?.verb ?? Parser.shared.detectVerb(in: text) ?? "follow up"
+        let finalType = parsed?.type ?? type
+        
+        // Use the provided Person object (with phone numbers)
+        let followUp = FollowUp(
+            id: UUID(),
+            type: finalType,
+            person: person,
+            appType: app,
+            note: text.trimmingCharacters(in: .whitespacesAndNewlines),
+            url: url,
+            dueAt: due,
+            createdAt: now,
+            status: .open,
+            lastNudgedAt: nil
+        )
+        
+        print("🔍 NewFollowUpStore: === CREATING FOLLOWUP WITH PERSON ===")
+        print("   - ID: \(followUp.id)")
+        print("   - Type: \(followUp.type)")
+        print("   - Person: \(followUp.person.displayName)")
+        print("   - Person phone numbers: \(followUp.person.phoneNumbers)")
+        print("   - App: \(followUp.app) (\(followUp.app.rawValue))")
+        print("   - Snippet: '\(String(followUp.snippet.prefix(50)))'")
+        print("   - URL: '\(followUp.url ?? "nil")'")
+        print("   - Status: \(followUp.status)")
+        
+        try await create(followUp)
+        print("✅ NewFollowUpStore: Successfully created follow-up with Person!")
+        print("   - Current follow-ups count after add: \(await followUps.count)")
+    }
+    
     /// Mark a follow-up as done (compatible with old FollowUpStore interface)
     func markDone(_ followUp: FollowUp) {
         Task {
@@ -411,12 +461,23 @@ final class NewFollowUpStore: ObservableObject {
     }
     
     private func mapCoreDataToFollowUp(_ cdFollowUp: CDFollowUp) -> FollowUp {
-        // Create a person object from the Core Data contact label
-        let contactLabel = cdFollowUp.contactLabel ?? ""
-        let person = Person(
-            firstName: contactLabel.isEmpty ? "Unknown" : contactLabel,
-            lastName: ""
-        )
+        // Try to deserialize Person object from notes field first
+        var person: Person
+        
+        if let notesJson = cdFollowUp.notes,
+           let personData = notesJson.data(using: .utf8),
+           let decodedPerson = try? JSONDecoder().decode(Person.self, from: personData) {
+            person = decodedPerson
+            print("✅ NewFollowUpStore: Loaded Person with \(decodedPerson.phoneNumbers.count) phone numbers from Core Data")
+        } else {
+            // Fallback: create person from contact label (legacy data)
+            let contactLabel = cdFollowUp.contactLabel ?? ""
+            person = Person(
+                firstName: contactLabel.isEmpty ? "Unknown" : contactLabel,
+                lastName: ""
+            )
+            print("🔍 NewFollowUpStore: Created Person from contactLabel (no phone numbers): '\(contactLabel)'")
+        }
         
         return FollowUp(
             id: cdFollowUp.id ?? UUID(),
@@ -445,6 +506,15 @@ final class NewFollowUpStore: ObservableObject {
         cdFollowUp.status = followUp.status.rawValue
         cdFollowUp.lastNudgedAt = followUp.lastNudgedAt
         cdFollowUp.isCompleted = followUp.status == .done
+        
+        // Serialize Person object to preserve phone numbers
+        if let personData = try? JSONEncoder().encode(followUp.person),
+           let personJson = String(data: personData, encoding: .utf8) {
+            cdFollowUp.notes = personJson
+            print("💾 NewFollowUpStore: Stored Person JSON with \(followUp.person.phoneNumbers.count) phone numbers")
+        } else {
+            print("❌ NewFollowUpStore: Failed to serialize Person object")
+        }
         
         // Set notification-related fields
         if cdFollowUp.shouldNotify == false { // Only set if not already set
