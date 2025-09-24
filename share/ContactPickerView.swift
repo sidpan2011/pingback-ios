@@ -201,17 +201,8 @@ struct ContactPickerView: View {
     }
     
     private func formatPhoneNumber(_ phoneNumber: String) -> String {
-        // Basic E.164 formatting - in a real app, use PhoneNumberKit
-        let digitsOnly = phoneNumber.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
-        
-        // If it doesn't start with +, assume US number
-        if !phoneNumber.hasPrefix("+") && digitsOnly.count == 10 {
-            return "+1\(digitsOnly)"
-        } else if phoneNumber.hasPrefix("+") {
-            return "+\(digitsOnly)"
-        } else {
-            return "+\(digitsOnly)"
-        }
+        // Use SharedPhoneNumberService for proper region-aware E.164 formatting
+        return SharedPhoneNumberService.normalizeToE164(phoneNumber, contact: selectedContact) ?? phoneNumber
     }
 }
 

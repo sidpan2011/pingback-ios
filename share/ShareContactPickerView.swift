@@ -233,10 +233,13 @@ struct ShareContactPickerView: View {
         let firstName = contact.givenName.isEmpty ? fullName : contact.givenName
         let lastName = contact.familyName
         
+        // Use SharedPhoneNumberService for proper region-aware E.164 formatting
+        let e164PhoneNumber = SharedPhoneNumberService.normalizeToE164(phoneNumber, contact: contact) ?? phoneNumber
+        
         return Person(
             firstName: firstName.isEmpty ? "Unknown" : firstName,
             lastName: lastName,
-            phoneNumbers: [phoneNumber]
+            phoneNumbers: [e164PhoneNumber]
         )
     }
 }

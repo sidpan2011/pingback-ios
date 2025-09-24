@@ -12,7 +12,8 @@ struct ShareQuickTimeOption {
 @MainActor
 class ShareExtensionViewModel: ObservableObject {
     @Published var isLoading = true
-    @Published var selectedApp: AppKind = .whatsapp
+    // WhatsApp-only mode - app is always WhatsApp
+    let selectedApp: AppKind = .whatsapp
     @Published var selectedPerson: Person?
     @Published var selectedType: FollowType = .doIt
     @Published var messagePreview = ""
@@ -20,6 +21,7 @@ class ShareExtensionViewModel: ObservableObject {
     @Published var isEditingMessage = false
     @Published var selectedQuickTime: String?
     @Published var customDateTime = Date().addingTimeInterval(24 * 60 * 60)
+    @Published var contactSearchQuery = ""
     @Published var showContactPicker = false
     @Published var showDateTimePicker = false
     @Published var showDateSheet = false
@@ -31,6 +33,10 @@ class ShareExtensionViewModel: ObservableObject {
     @Published var contactName = "" {
         didSet {
             print("🔵 ViewModel contactName changed from '\(oldValue)' to '\(contactName)'")
+            print("🔵 ViewModel selectedPerson is: \(selectedPerson?.displayName ?? "nil")")
+            if let person = selectedPerson {
+                print("🔵 ViewModel selectedPerson phone numbers: \(person.phoneNumbers)")
+            }
         }
     }
     @Published var isDateEnabled = false
@@ -44,8 +50,10 @@ class ShareExtensionViewModel: ObservableObject {
     private var smartDefaults = SmartDefaults()
     @Published var isInitializing = false
     
+    // Using existing quickTimeOptions from smartDefaults
+    
     var showSaveButton: Bool {
-        isEditingMessage || selectedQuickTime == "Custom" || selectedApp != .whatsapp
+        isEditingMessage || selectedQuickTime == "Pick…"
     }
     
     var canSave: Bool {
@@ -63,14 +71,7 @@ class ShareExtensionViewModel: ObservableObject {
     }
     
     var defaultTimeFooterText: String {
-        let calendar = Calendar.current
-        let hour = calendar.component(.hour, from: Date())
-        
-        if hour >= 9 && hour < 18 {
-            return "By default we create the follow-up for today at 6:00 PM"
-        } else {
-            return "By default we create the follow-up for tomorrow at 9:00 AM"
-        }
+        return "Respects quiet hours (10 PM - 7 AM)"
     }
     
     var selectedDueDate: Date {
@@ -113,19 +114,14 @@ class ShareExtensionViewModel: ObservableObject {
         selectedDate = defaultDate
         selectedTime = defaultDate
         
-        // Use a small delay to ensure the view has finished its initial render
-        // before enabling the toggles to prevent automatic sheet presentation
-        Task { @MainActor in
-            try await Task.sleep(nanoseconds: 100_000_000) // 0.1 second
-            
-            if calendar.isDate(defaultDay, inSameDayAs: today) {
-                // Same day - enable time only
-                isTimeEnabled = true
-            } else {
-                // Different day - enable both date and time
-                isDateEnabled = true
-                isTimeEnabled = true
-            }
+        // Set the toggles directly - no onChange handlers to worry about
+        if calendar.isDate(defaultDay, inSameDayAs: today) {
+            // Same day - enable time only
+            isTimeEnabled = true
+        } else {
+            // Different day - enable both date and time
+            isDateEnabled = true
+            isTimeEnabled = true
         }
         
         isInitializing = false
@@ -155,8 +151,7 @@ class ShareExtensionViewModel: ObservableObject {
         selectedPerson = person
         contactName = person.firstName + (person.lastName.isEmpty ? "" : " " + person.lastName)
         
-        // Get sticky app preference for this person or use default
-        selectedApp = smartDefaults.getStickyApp(for: person) ?? .whatsapp
+        // WhatsApp-only mode - app is always WhatsApp
         
         // Use smart default time if none selected
         if selectedQuickTime == nil {
@@ -181,6 +176,20 @@ class ShareExtensionViewModel: ObservableObject {
         await save()
     }
     
+    func selectContact(_ person: Person) {
+        selectedPerson = person
+        contactName = person.displayName
+        // Auto-select default time if none selected
+        if selectedQuickTime == nil {
+            selectedQuickTime = quickTimeOptions.first { $0.isDefault }?.title
+        }
+    }
+    
+    func searchContacts() {
+        // TODO: Implement contact search functionality
+        print("🔍 Searching contacts for: \(contactSearchQuery)")
+    }
+    
     private func save() async {
         print("🔵 Starting save() - contactName: '\(contactName)'")
         
@@ -191,13 +200,15 @@ class ShareExtensionViewModel: ObservableObject {
             return
         }
         
-        print("🔵 Creating person from contactName: '\(contactName)'")
+        print("🔵 Using selectedPerson or creating from contactName: '\(contactName)'")
         
-        // Create person from contact name
-        let person = Person(
+        // Use the selectedPerson if available (contains phone numbers), otherwise create from name
+        let person = selectedPerson ?? Person(
             firstName: contactName,
             lastName: ""
         )
+        
+        print("🔵 Person details: firstName='\(person.firstName)', phoneNumbers=\(person.phoneNumbers)")
         
         do {
             let followUp = FollowUp(
@@ -255,12 +266,20 @@ class ShareExtensionViewModel: ObservableObject {
         }
         
         // Create data in the format expected by SharedDataManager
+        // Serialize the full Person object to preserve phone numbers
+        var personData: [String: Any] = [:]
+        if let personJsonData = try? JSONEncoder().encode(followUp.person),
+           let personDict = try? JSONSerialization.jsonObject(with: personJsonData) as? [String: Any] {
+            personData = personDict
+        }
+        
         let sharedData: [String: Any] = [
             "notes": followUp.note,
             "type": followUp.type.rawValue,
             "sourceApp": followUp.appType.label,
             "sourceBundleId": getBundleIdForApp(followUp.appType),
-            "contact": followUp.person.displayName,
+            "contact": followUp.person.displayName, // Keep for backward compatibility
+            "person": personData, // NEW: Full Person object with phone numbers
             "url": followUp.url ?? "",
             "dueAt": ISO8601DateFormatter().string(from: followUp.dueAt),
             "createdAt": ISO8601DateFormatter().string(from: followUp.createdAt),
@@ -285,6 +304,7 @@ class ShareExtensionViewModel: ObservableObject {
         print("📱 ShareExtension: Saved follow-up to shared storage:")
         print("   - notes: \(followUp.note)")
         print("   - contact: \(followUp.person.displayName)")
+        print("   - person phone numbers: \(followUp.person.phoneNumbers)")
         print("   - app: \(followUp.appType.label)")
         print("   - dueAt: \(followUp.dueAt)")
     }
@@ -377,18 +397,19 @@ class SmartDefaults {
     }
     
     private func getSmartDefaultOption(now: Date, hour: Int, calendar: Calendar) -> (Date, Bool) {
-        // Respect quiet hours (no schedule 22:00–07:00; roll to next morning 09:00)
+        // Match AddFollowUpView logic: if before 6pm -> today 6pm, else -> tomorrow 9am
+        // Also respect quiet hours (no schedule 22:00–07:00; roll to next morning 09:00)
         if hour >= 22 || hour < 7 {
             // After 10pm or before 7am -> Tomorrow 9am
             let tomorrow = calendar.date(byAdding: .day, value: 1, to: now) ?? now
             let tomorrow9am = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: tomorrow) ?? tomorrow
             return (tomorrow9am, false)
-        } else if hour >= 9 && hour <= 17 {
-            // 9am-5pm -> Today 6pm
+        } else if hour < 18 {
+            // Before 6pm -> Today 6pm (matches AddFollowUpView logic)
             let today6pm = calendar.date(bySettingHour: 18, minute: 0, second: 0, of: now) ?? now
             return (today6pm, true)
         } else {
-            // Early morning (7am-9am) or evening (5pm-10pm) -> Tomorrow 9am
+            // After 6pm -> Tomorrow 9am
             let tomorrow = calendar.date(byAdding: .day, value: 1, to: now) ?? now
             let tomorrow9am = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: tomorrow) ?? tomorrow
             return (tomorrow9am, false)

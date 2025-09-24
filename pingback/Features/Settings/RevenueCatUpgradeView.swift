@@ -8,286 +8,398 @@ struct RevenueCatUpgradeView: View {
     @State private var isPurchasing = false
     @State private var showingAlert = false
     @State private var alertMessage = ""
+    @State private var selectedPlan: PlanType = .yearly
     
-    // Feature carousel
-    struct Feature: Identifiable { 
-        let id = UUID()
-        let title: String
-        let subtitle: String
-        let symbol: String
+    enum PlanType: String, CaseIterable {
+        case monthly = "monthly"
+        case yearly = "yearly"
     }
-    
-    private let features: [Feature] = [
-        .init(title: "Unlimited Follow-ups", subtitle: "Create as many follow-ups as you need", symbol: "infinity"),
-        .init(title: "Advanced Notifications", subtitle: "Customize notification timing and frequency", symbol: "bell.badge.fill"),
-        .init(title: "Analytics & Insights", subtitle: "Track your follow-up success rates", symbol: "chart.bar.fill"),
-        .init(title: "Cloud Sync", subtitle: "Sync across all your devices", symbol: "icloud.fill"),
-        .init(title: "Custom Themes", subtitle: "Personalize your app experience", symbol: "paintbrush.fill"),
-        .init(title: "Priority Support", subtitle: "Get help when you need it most", symbol: "headphones")
-    ]
-    @State private var featureIndex: Int = 0
     
     var body: some View {
         NavigationStack {
+            GeometryReader { geometry in
             ScrollView {
-                VStack(spacing: 24) {
-                    // MARK: Feature carousel
-                    TabView(selection: $featureIndex) {
-                        ForEach(Array(features.enumerated()), id: \.offset) { index, item in
-                            VStack(spacing: 16) {
-                                Image(systemName: item.symbol)
-                                    .font(.system(size: 80))
-                                    .foregroundColor(.primary)
-
-                                Text(item.title)
-                                    .font(.title3).bold()
-                                    .multilineTextAlignment(.center)
-                                    .fixedSize(horizontal: false, vertical: true)
-
-                                Text(item.subtitle)
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                    .multilineTextAlignment(.center)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                            .padding(.horizontal, 24)
-                            .padding(.bottom, 24)
-                            .tag(index)
-                        }
-                    }
-                    .frame(height: 260)
-                    .tabViewStyle(.page)
-                    .indexViewStyle(.page(backgroundDisplayMode: .always))
-                    .tint(.secondary)
-
-                    // MARK: Billing options (side‑by‑side cards)
+                    VStack(spacing: PaywallConstants.spacing) {
+                        headerView
+                        
                     if subscriptionManager.isLoading {
-                        ProgressView("Loading plans...")
-                            .frame(maxWidth: .infinity, minHeight: 120)
+                            loadingView
                     } else if let errorMessage = subscriptionManager.errorMessage {
-                        VStack(spacing: 16) {
-                            Image(systemName: "exclamationmark.triangle")
-                                .font(.largeTitle)
-                                .foregroundColor(.orange)
-                            Text("Unable to load plans")
-                                .font(.headline)
-                            Text(errorMessage)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
-                            Button("Try Again") {
-                                Task {
-                                    await subscriptionManager.loadOfferings()
-                                }
-                            }
-                            .buttonStyle(.bordered)
+                            errorView(errorMessage)
+                        } else if let offerings = subscriptionManager.offerings,
+                                  let current = offerings.current {
+                            mainPaywallView(offerings: current)
+                        } else {
+                            noOfferingsView
                         }
-                        .frame(maxWidth: .infinity, minHeight: 120)
-                        .padding()
-                    } else if subscriptionManager.hasOfferings {
-                        HStack(spacing: 16) {
-                            if let yearly = subscriptionManager.yearlyPackage {
-                                PlanOptionCard(
-                                    title: "Pay Yearly",
-                                    priceText: yearly.storeProduct.localizedPriceString,
-                                    subText: "billed yearly",
-                                    isSelected: selectedPackage?.identifier == yearly.identifier,
-                                    saveBadge: subscriptionManager.calculateSavings(),
-                                    primaryColor: .primary,
-                                    onTap: { selectedPackage = yearly }
-                                )
-                            }
-
-                            if let monthly = subscriptionManager.monthlyPackage {
-                                PlanOptionCard(
-                                    title: "Pay Monthly",
-                                    priceText: monthly.storeProduct.localizedPriceString,
-                                    subText: "billed monthly",
-                                    isSelected: selectedPackage?.identifier == monthly.identifier,
-                                    saveBadge: nil,
-                                    primaryColor: .primary,
-                                    onTap: { selectedPackage = monthly }
-                                )
-                            }
-                        }
-                        .frame(maxWidth: .infinity)
-                    } else {
-                        VStack(spacing: 16) {
-                            Image(systemName: "wifi.slash")
-                                .font(.largeTitle)
-                                .foregroundColor(.gray)
-                            Text("No plans available")
-                                .font(.headline)
-                            Text("Please check your internet connection and try again")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
-                            Button("Retry") {
-                                Task {
-                                    await subscriptionManager.loadOfferings()
-                                }
-                            }
-                            .buttonStyle(.bordered)
-                        }
-                        .frame(maxWidth: .infinity, minHeight: 120)
-                        .padding()
+                        
+                        footerView
                     }
-
-                    Spacer(minLength: 40)
+                    .padding(.horizontal, PaywallConstants.horizontalPadding)
+                    .padding(.vertical, PaywallConstants.spacing)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 12)
-                .padding(.bottom, 100) // leave room for sticky button
             }
-            .navigationTitle("Pro Plan")
-            .navigationBarTitleDisplayMode(.inline)
             .toolbar { 
-                ToolbarItem(placement: .topBarLeading) { 
-                    Button("Cancel") { 
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Close") {
                         dismiss() 
                     }
                     .foregroundColor(.primary)
                 } 
             }
-            .safeAreaInset(edge: .bottom) { stickyCTA }
-            .alert("Error", isPresented: $showingAlert) { 
-                Button("OK") {} 
+        }
+        .alert("Purchase Status", isPresented: $showingAlert) {
+            Button("OK") { }
             } message: { 
                 Text(alertMessage) 
             }
-            .onAppear {
-                print("🔵 RevenueCatUpgradeView: View appeared")
-                print("🔵 RevenueCat isLoading: \(subscriptionManager.isLoading)")
-                print("🔵 RevenueCat hasOfferings: \(subscriptionManager.hasOfferings)")
-                print("🔵 RevenueCat errorMessage: \(subscriptionManager.errorMessage ?? "None")")
-                print("🔵 RevenueCat connectionStatus: \(subscriptionManager.connectionStatus)")
-                
-                Task {
-                    print("🔵 Loading offerings...")
-                    await subscriptionManager.loadOfferings()
-                    print("🔵 After loading - hasOfferings: \(subscriptionManager.hasOfferings)")
-                    print("🔵 After loading - monthlyPackage: \(subscriptionManager.monthlyPackage?.identifier ?? "nil")")
-                    print("🔵 After loading - yearlyPackage: \(subscriptionManager.yearlyPackage?.identifier ?? "nil")")
-                }
-                if selectedPackage == nil {
-                    selectedPackage = subscriptionManager.yearlyPackage ?? subscriptionManager.monthlyPackage
-                }
-            }
-            .onChange(of: subscriptionManager.hasOfferings) { hasOfferings in
-                if hasOfferings && selectedPackage == nil {
-                    selectedPackage = subscriptionManager.yearlyPackage ?? subscriptionManager.monthlyPackage
-                }
-            }
+    }
+    
+    // MARK: - Header View
+    private var headerView: some View {
+        VStack(spacing: 16) {
+            // App Icon
+            Image(uiImage: UIImage(named: "AppIcon") ?? UIImage())
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 120, height: 120)
+                .clipShape(RoundedRectangle(cornerRadius: 24))
+                .shadow(color: .black.opacity(0.2), radius: 15, x: 0, y: 8)
+            
+            // App Name
+            Text("Pingback Pro")
+                .font(.largeTitle)
+                .fontWeight(.bold)
+                .multilineTextAlignment(.center)
+            
+            Text("Available Plans")
+                .font(.title2)
+                .fontWeight(.semibold)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding(.top, 20)
+    }
+    
+    // MARK: - Loading View
+    private var loadingView: some View {
+        VStack(spacing: PaywallConstants.spacing) {
+            ProgressView("Loading subscription options...")
+                .frame(maxWidth: .infinity)
+                .frame(height: 100)
         }
     }
     
-    // MARK: Sticky footer button
-    private var stickyCTA: some View {
-        VStack(spacing: 0) {
-            Divider()
-            Button(action: handleContinue) {
-                Text("Continue")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.primary)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 50)
-                    .background(Color.secondary)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+    // MARK: - Error View
+    private func errorView(_ message: String) -> some View {
+        VStack(spacing: PaywallConstants.spacing) {
+            HStack {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundColor(.orange)
+                
+                Text(message)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                Spacer()
             }
-            .disabled(isPurchasing || subscriptionManager.isLoading || selectedPackage == nil)
-            .overlay(
-                Group {
-                    if isPurchasing || subscriptionManager.isLoading { 
-                        ProgressView().tint(Color(UIColor.systemBackground)) 
-                    }
+            .padding(.horizontal, PaywallConstants.spacing)
+            .padding(.vertical, 8)
+            .background(Color.orange.opacity(0.1))
+            .cornerRadius(8)
+            
+            Button("Retry") {
+                Task {
+                    await subscriptionManager.loadOfferings()
                 }
-            )
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
-            .background(.regularMaterial)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: PaywallConstants.buttonHeight)
+            .background(Color.blue)
+            .foregroundColor(.white)
+            .cornerRadius(PaywallConstants.cornerRadius)
         }
     }
-
-    // MARK: Actions
-    private func handleContinue() {
-        guard let package = selectedPackage else {
-            alertMessage = "Please select a plan"
-            showingAlert = true
-            return
+    
+    // MARK: - Main Paywall View
+    private func mainPaywallView(offerings: Offering) -> some View {
+        VStack(spacing: PaywallConstants.spacing) {
+            // Plan Selection
+            VStack(spacing: 12) {
+                // Monthly Plan
+                if let monthlyPackage = offerings.monthly {
+                    planSelectionView(
+                        planType: .monthly,
+                        package: monthlyPackage,
+                        title: "Monthly",
+                        price: monthlyPackage.storeProduct.localizedPriceString,
+                        perMonth: monthlyPackage.storeProduct.localizedPriceString + "/month",
+                        isRecommended: false
+                    )
+                }
+                
+                // Yearly Plan
+                if let yearlyPackage = offerings.annual {
+                    planSelectionView(
+                        planType: .yearly,
+                        package: yearlyPackage,
+                        title: "Yearly",
+                        price: yearlyPackage.storeProduct.localizedPriceString,
+                        perMonth: subscriptionManager.yearlyPerMonthPriceString ?? "",
+                        isRecommended: true,
+                        savings: subscriptionManager.calculateSavings()
+                    )
+                }
+            }
+            
+            // Action Buttons
+            actionButtonsView
         }
-        Task { await purchase(package) }
     }
-
-    private func purchase(_ package: Package) async {
-        isPurchasing = true
-        let success = await subscriptionManager.purchase(package: package)
-        isPurchasing = false
-        if success {
-            let successFeedback = UINotificationFeedbackGenerator()
-            successFeedback.notificationOccurred(.success)
-            dismiss()
-        } else if let error = subscriptionManager.errorMessage { 
-            alertMessage = error
-            showingAlert = true 
+    
+    // MARK: - No Offerings View
+    private var noOfferingsView: some View {
+        VStack(spacing: PaywallConstants.spacing) {
+            VStack(spacing: 12) {
+                // Monthly Plan (Placeholder)
+                planSelectionView(
+                    planType: .monthly,
+                    package: nil,
+                    title: "Monthly",
+                    price: "Loading price…",
+                    perMonth: "",
+                    isRecommended: false,
+                    isEnabled: false
+                )
+                
+                // Yearly Plan (Placeholder)
+                planSelectionView(
+                    planType: .yearly,
+                    package: nil,
+                    title: "Yearly",
+                    price: "Loading price…",
+                    perMonth: "",
+                    isRecommended: true,
+                    isEnabled: false
+                )
+            }
+            
+            Button("Retry") {
+                Task {
+                    await subscriptionManager.loadOfferings()
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: PaywallConstants.buttonHeight)
+            .background(Color.blue)
+            .foregroundColor(.white)
+            .cornerRadius(PaywallConstants.cornerRadius)
+            
+            // Action Buttons
+            actionButtonsView
         }
     }
-}
-
-// MARK: - Plan card
-private struct PlanOptionCard: View {
-    let title: String
-    let priceText: String
-    let subText: String
-    let isSelected: Bool
-    let saveBadge: String?
-    let primaryColor: Color
-    let onTap: () -> Void
-
-    var body: some View {
-        Button(action: onTap) {
-            ZStack(alignment: .topLeading) {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(title)
-                        .font(.headline)
-                    HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text(priceText)
-                            .font(.system(size: 32, weight: .bold))
-                            .minimumScaleFactor(0.8)
-                        Spacer()
-                        if isSelected { 
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 24))
-                                .foregroundColor(primaryColor) 
+    
+    // MARK: - Plan Selection View
+    private func planSelectionView(
+        planType: PlanType,
+        package: Package?,
+        title: String,
+        price: String,
+        perMonth: String,
+        isRecommended: Bool,
+        savings: String? = nil,
+        isEnabled: Bool = true
+    ) -> some View {
+        Button(action: {
+            selectedPlan = planType
+            selectedPackage = package
+        }) {
+            VStack(spacing: 8) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text(title)
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                            
+                            if isRecommended {
+                                Text("BEST VALUE")
+                                    .font(.caption)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 2)
+                                    .background(Color.blue)
+                                    .cornerRadius(4)
+                            }
+                        }
+                        
+                        Text(price)
+                            .font(.title2)
+                            .fontWeight(.bold)
+                        
+                        if !perMonth.isEmpty {
+                            Text(perMonth)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        if let savings = savings, !savings.isEmpty {
+                            Text(savings)
+                                .font(.caption)
+                                .fontWeight(.medium)
+                                .foregroundColor(.green)
                         }
                     }
-                    Text(subText)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    
+                    Spacer()
+                    
+                    // Selection indicator
+                    Image(systemName: selectedPlan == planType ? "checkmark.circle.fill" : "circle")
+                        .font(.title2)
+                        .foregroundColor(selectedPlan == planType ? .blue : .secondary)
                 }
-                .padding(16)
-                .frame(maxWidth: .infinity)
+                .padding(PaywallConstants.spacing)
                 .background(
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(Color(.secondarySystemGroupedBackground))
+                    RoundedRectangle(cornerRadius: PaywallConstants.cornerRadius)
+                        .fill(isEnabled ? Color(.systemGray6) : Color(.systemGray5))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 16)
-                                .stroke(isSelected ? primaryColor : Color.clear, lineWidth: 2)
+                            RoundedRectangle(cornerRadius: PaywallConstants.cornerRadius)
+                                .stroke(
+                                    selectedPlan == planType ? Color.blue : (isRecommended ? Color.blue.opacity(0.3) : Color.clear),
+                                    lineWidth: selectedPlan == planType ? 2 : (isRecommended ? 1 : 0)
+                                )
                         )
                 )
-
-                if let save = saveBadge, !save.isEmpty {
-                    Text("Save \(save)")
-                        .font(.caption).bold()
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 8).padding(.vertical, 4)
-                        .background(primaryColor)
-                        .clipShape(Capsule())
-                        .padding(8)
-                }
             }
         }
-        .buttonStyle(.plain)
+        .disabled(!isEnabled || isPurchasing)
+        .accessibilityLabel("\(title) subscription, \(price)")
+        .accessibilityHint(isEnabled ? "Tap to select" : "Subscription not available")
+    }
+    
+    // MARK: - Action Buttons View
+    private var actionButtonsView: some View {
+        VStack(spacing: 12) {
+            // Purchase Button
+            Button(action: {
+                guard let package = selectedPackage else { return }
+                Task {
+                    await purchasePackage(package)
+                }
+            }) {
+                HStack {
+                    if isPurchasing {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                            .foregroundColor(.white)
+                    } else {
+                        Image(systemName: "star.fill")
+                    }
+                    
+                    Text(isPurchasing ? "Processing..." : "Start Free Trial")
+                        .fontWeight(.semibold)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: PaywallConstants.buttonHeight)
+                .background(Color.blue)
+                .foregroundColor(.white)
+                .cornerRadius(PaywallConstants.cornerRadius)
+            }
+            .disabled(isPurchasing || selectedPackage == nil)
+            .accessibilityLabel(selectedPlan == .monthly ? PaywallConstants.Accessibility.monthlyButton : PaywallConstants.Accessibility.yearlyButton)
+            
+            // Restore Purchases Button
+            Button(action: {
+                Task {
+                    await restorePurchases()
+                }
+            }) {
+                HStack {
+                    Image(systemName: "arrow.clockwise.circle")
+                    Text("Restore Purchases")
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: PaywallConstants.buttonHeight)
+                .background(Color(.systemGray5))
+                .foregroundColor(.primary)
+                .cornerRadius(PaywallConstants.cornerRadius)
+            }
+            .disabled(isPurchasing)
+            .accessibilityLabel(PaywallConstants.Accessibility.restoreButton)
+        }
+    }
+    
+    // MARK: - Footer View
+    private var footerView: some View {
+        VStack(spacing: 8) {
+            Text(PaywallConstants.footerText)
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+            
+            HStack(spacing: 16) {
+                Button("Privacy") {
+                    if let url = URL(string: PaywallConstants.privacyURL) {
+                        UIApplication.shared.open(url)
+                    }
+                }
+                .font(.caption)
+                .foregroundColor(.blue)
+                .accessibilityLabel(PaywallConstants.Accessibility.privacyLink)
+                
+                Button("Terms") {
+                    if let url = URL(string: PaywallConstants.termsURL) {
+                        UIApplication.shared.open(url)
+                    }
+                }
+                .font(.caption)
+                .foregroundColor(.blue)
+                .accessibilityLabel(PaywallConstants.Accessibility.termsLink)
+            }
+        }
+        .padding(.top, 20)
+    }
+    
+    // MARK: - Purchase Functions
+    private func purchasePackage(_ package: Package) async {
+        isPurchasing = true
+        alertMessage = ""
+        
+        do {
+            let success = await subscriptionManager.purchase(package: package)
+            if success {
+                alertMessage = "Purchase successful! Welcome to Pro!"
+                showingAlert = true
+                dismiss()
+            } else {
+                alertMessage = "Purchase failed. Please try again."
+                showingAlert = true
+            }
+        }
+        
+        isPurchasing = false
+    }
+    
+    private func restorePurchases() async {
+        isPurchasing = true
+        alertMessage = ""
+        
+        do {
+            let success = await subscriptionManager.restorePurchases()
+            if success {
+                alertMessage = "Purchases restored successfully!"
+                showingAlert = true
+                dismiss()
+            } else {
+                alertMessage = "No purchases found to restore."
+                showingAlert = true
+            }
+        }
+        
+        isPurchasing = false
     }
 }
 

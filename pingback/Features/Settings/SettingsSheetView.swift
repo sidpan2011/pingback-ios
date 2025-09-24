@@ -255,9 +255,7 @@ struct SettingsSheetView: View {
                 }
             }
             .sheet(isPresented: $showingUpgrade) {
-                NavigationView {
-                    RevenueCatUpgradeView()
-                }
+                HybridPaywallView()
             }
             .sheet(isPresented: $showingSubscription) {
                 NavigationView {

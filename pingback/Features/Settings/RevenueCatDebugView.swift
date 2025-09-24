@@ -92,6 +92,7 @@ struct RevenueCatDebugView: View {
                     Button("Close") {
                         dismiss()
                     }
+                    .foregroundColor(.primary)
                 }
             }
         }

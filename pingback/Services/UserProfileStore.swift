@@ -116,7 +116,11 @@ final class UserProfileStore: ObservableObject {
     func updateAvatar(_ avatarData: Data?) async throws {
         guard let currentProfile = profile else { return }
         
-        currentProfile.avatarData = avatarData
+        // Update the avatar data on the main actor to ensure UI updates
+        await MainActor.run {
+            currentProfile.avatarData = avatarData
+        }
+        
         try await saveProfile(currentProfile)
     }
     

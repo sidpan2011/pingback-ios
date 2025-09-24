@@ -16,6 +16,8 @@ struct HomeView: View {
     @State private var notificationRefreshTimer: Timer?
     @FocusState private var isSearchFocused: Bool
     @State private var isRefreshing = false
+    @State private var showCopyToast = false
+    @State private var copyToastMessage = ""
     // Removed themeManager dependency for instant theme switching
     private let sharedDataManager = SharedDataManager.shared
 
@@ -92,6 +94,13 @@ struct HomeView: View {
                         markAllNotificationsAsRead()
                     }
             }
+            .overlay(alignment: .top) {
+                if showCopyToast {
+                    toastView
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .zIndex(1000)
+                }
+            }
             .onAppear {
                 print("🏠 HomeView: onAppear called - this should show every time you open the app")
                 print("🏠 HomeView: View appeared")
@@ -128,6 +137,7 @@ struct HomeView: View {
                 loadNotificationCount()
             }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+                print("🔄 APP LIFECYCLE: didBecomeActiveNotification received")
                 loadNotificationCount()
                 // Note: Removed duplicate processing to prevent multiple calls
             }
@@ -144,6 +154,13 @@ struct HomeView: View {
 
     private var header: some View {
         HStack(alignment: .center, spacing: 12) {
+            // Profile picture on the left
+            ProfilePictureView(
+                profile: userProfileStore.profile,
+                size: 42,
+                showBorder: false
+            )
+            
             Spacer()
             
             HStack(spacing: 24) {
@@ -597,9 +614,20 @@ struct HomeView: View {
     
     private func bumpItem(_ item: FollowUp) {
         let message = createMessage(for: item)
+        
+        // Copy the snippet to clipboard with haptic feedback and toast
+        UIPasteboard.general.string = message
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
+        print("📋 ✅ SNIPPET COPIED! Paste in WhatsApp to find: '\(message)'")
+        
+        // Show toast notification
+        showCopyToast(message: "Snippet copied—paste to find in chat")
+        
         let success = DeepLinkHelper.openChat(for: item, message: message)
         
         if success {
+            print("🚀 BUMP: Success! WhatsApp opened")
             // Add haptic feedback
             let impactFeedback = UIImpactFeedbackGenerator(style: .light)
             impactFeedback.impactOccurred()
@@ -607,6 +635,7 @@ struct HomeView: View {
             // Track analytics
             AnalyticsService.shared.trackChatOpened(app: item.appType, source: "home_bump")
         } else {
+            print("🚀 BUMP: Failed! Showing bump failed alert")
             print("❌ Failed to open chat for \(item.appType.label)")
         }
     }
@@ -664,6 +693,38 @@ struct HomeView: View {
         case 17..<22: return "Good evening"
         default: return "Good night"
         }
+    }
+    
+    // MARK: - Toast Functionality
+    
+    private func showCopyToast(message: String) {
+        copyToastMessage = message
+        withAnimation(.easeInOut(duration: 0.3)) {
+            showCopyToast = true
+        }
+        
+        // Hide toast after 2 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                showCopyToast = false
+            }
+        }
+    }
+    
+    private var toastView: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "doc.on.clipboard.fill")
+                .foregroundStyle(.white)
+            Text(copyToastMessage)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.white)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(.black.opacity(0.8))
+        .cornerRadius(8)
+        .padding(.horizontal, 20)
+        .padding(.top, 50) // Account for safe area
     }
     
     private func loadNotificationCount() {

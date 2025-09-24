@@ -8,8 +8,8 @@ class NotificationService: NSObject {
     
     // Notification categories and actions
     private let followUpCategoryId = "FOLLOW_UP_REMINDER"
-    private let openChatActionId = "OPEN_CHAT"
-    private let snoozeDayActionId = "SNOOZE_DAY"
+    private let bumpActionId = "BUMP"
+    private let snoozeHourActionId = "SNOOZE_1H"
     private let markDoneActionId = "MARK_DONE"
     
     override init() {
@@ -36,29 +36,29 @@ class NotificationService: NSObject {
         let center = UNUserNotificationCenter.current()
         center.delegate = self
         
-        // Create actions
-        let openChatAction = UNNotificationAction(
-            identifier: openChatActionId,
-            title: "Open Chat",
-            options: [.foreground]
+        // Create actions for WhatsApp-only mode
+        let bumpAction = UNNotificationAction(
+            identifier: bumpActionId,
+            title: "Bump",
+            options: [.foreground] // Opens app for post-bump flow
         )
         
-        let snoozeDayAction = UNNotificationAction(
-            identifier: snoozeDayActionId,
-            title: "Snooze 1 Day",
+        let snoozeHourAction = UNNotificationAction(
+            identifier: snoozeHourActionId,
+            title: "Snooze +1h",
             options: []
         )
         
         let markDoneAction = UNNotificationAction(
             identifier: markDoneActionId,
-            title: "Mark Done",
+            title: "Done",
             options: []
         )
         
         // Create category
         let followUpCategory = UNNotificationCategory(
             identifier: followUpCategoryId,
-            actions: [openChatAction, snoozeDayAction, markDoneAction],
+            actions: [bumpAction, snoozeHourAction, markDoneAction],
             intentIdentifiers: [],
             options: [.customDismissAction]
         )
@@ -209,18 +209,18 @@ extension NotificationService: UNUserNotificationCenterDelegate {
         }
         
         switch actionId {
-        case openChatActionId:
-            await handleOpenChatAction(followUp: followUp)
+        case bumpActionId:
+            await handleBumpAction(followUp: followUp)
             
-        case snoozeDayActionId:
-            await handleSnoozeDayAction(followUp: followUp)
+        case snoozeHourActionId:
+            await handleSnoozeHourAction(followUp: followUp)
             
         case markDoneActionId:
             await handleMarkDoneAction(followUp: followUp)
             
         case UNNotificationDefaultActionIdentifier:
-            // User tapped the notification itself - open the app
-            await handleOpenAppAction(followUp: followUp)
+            // User tapped the notification itself - open the app and show post-bump flow
+            await handleNotificationTap(followUp: followUp)
             
         default:
             print("❓ Unknown notification action: \(actionId)")
@@ -230,41 +230,45 @@ extension NotificationService: UNUserNotificationCenterDelegate {
         await updateBadgeCount()
     }
     
-    private func handleOpenChatAction(followUp: FollowUp) async {
-        print("💬 Opening chat for follow-up: \(followUp.id)")
+    private func handleBumpAction(followUp: FollowUp) async {
+        print("💬 Bump action from notification for follow-up: \(followUp.id)")
         
         // Create message from template if available
         let message = createMessage(for: followUp)
         
-        // Open chat using deep link helper
+        // Open WhatsApp directly
         let success = DeepLinkHelper.openChat(for: followUp, message: message)
         
         if success {
             // Log that chat was opened
-            logAnalytics(event: "notification_chat_opened", followUp: followUp)
+            logAnalytics(event: "notification_bump_opened", followUp: followUp)
+            
+            // Store the follow-up ID for post-bump flow when app returns to foreground
+            UserDefaults.standard.set(followUp.id.uuidString, forKey: "pending_post_bump_followup")
         }
     }
     
-    private func handleSnoozeDayAction(followUp: FollowUp) async {
-        print("😴 Snoozing follow-up for 1 day: \(followUp.id)")
+    private func handleNotificationTap(followUp: FollowUp) async {
+        print("📱 Notification tapped for follow-up: \(followUp.id)")
         
-        var updatedFollowUp = followUp
-        updatedFollowUp.dueAt = Date().addingTimeInterval(24 * 60 * 60) // +24 hours
-        updatedFollowUp.status = .snoozed
+        // Store the follow-up for showing in the app
+        UserDefaults.standard.set(followUp.id.uuidString, forKey: "notification_tapped_followup")
         
+        // Log analytics
+        logAnalytics(event: "notification_tapped", followUp: followUp)
+    }
+    
+    private func handleSnoozeHourAction(followUp: FollowUp) async {
+        print("⏰ Snoozing follow-up for 1 hour: \(followUp.id)")
+        
+        // Use the legacy FollowUpStore for now
         await MainActor.run {
             let followUpStore = FollowUpStore.shared
-            followUpStore.updateFollowUp(updatedFollowUp)
-        }
-        
-        // Reschedule notification
-        do {
-            try await rescheduleNotification(for: updatedFollowUp)
-        } catch {
-            print("❌ Failed to reschedule notification: \(error)")
+            followUpStore.snooze(followUp, minutes: 60) // 60 minutes
         }
         
         logAnalytics(event: "notification_snoozed", followUp: followUp)
+        print("✅ Follow-up snoozed for 1 hour")
     }
     
     private func handleMarkDoneAction(followUp: FollowUp) async {
@@ -364,3 +368,4 @@ extension NotificationService: UNUserNotificationCenterDelegate {
         }
     }
 }
+

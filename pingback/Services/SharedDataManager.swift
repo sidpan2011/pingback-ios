@@ -115,7 +115,7 @@ class SharedDataManager {
                 print("🔄 SharedDataManager: Processing shared data \(index + 1)/\(sharedFollowUps.count)")
                 print("   - Raw data: \(sharedData)")
                 
-                if let (text, type, contact, app, url) = extractDataForStore(sharedData) {
+                if let (text, type, contact, app, url, person) = extractDataForStore(sharedData) {
                     // Create content hash for deduplication based on content, not ID
                     let contentHash = createContentHash(text: text, contact: contact, app: app.rawValue)
                     
@@ -141,7 +141,18 @@ class SharedDataManager {
                     do {
                         // Pass the URL if it exists and is not empty
                         let urlToPass = url.isEmpty ? nil : url
-                        try await store.add(from: text, type: type, contact: contact, app: app, url: urlToPass)
+                        
+                        if let person = person {
+                            print("✅ SharedDataManager: Using Person object with \(person.phoneNumbers.count) phone numbers")
+                            for (index, phoneNumber) in person.phoneNumbers.enumerated() {
+                                print("   📱 Phone \(index + 1): \(phoneNumber)")
+                            }
+                            try await store.addWithPerson(from: text, type: type, person: person, app: app, url: urlToPass)
+                        } else {
+                            print("🔍 SharedDataManager: No Person object, using contact string: '\(contact)'")
+                            try await store.add(from: text, type: type, contact: contact, app: app, url: urlToPass)
+                        }
+                        
                         processedContentHashes.insert(contentHash)
                         print("✅ SharedDataManager: Successfully called store.add() for: \(String(text.prefix(50)))")
                         if let passedUrl = urlToPass {
@@ -313,7 +324,7 @@ class SharedDataManager {
         UserDefaults.standard.synchronize()
     }
     
-    private func extractDataForStore(_ data: [String: Any]) -> (text: String, type: FollowType, contact: String, app: AppKind, url: String)? {
+    private func extractDataForStore(_ data: [String: Any]) -> (text: String, type: FollowType, contact: String, app: AppKind, url: String, person: Person?)? {
         print("🔍 SharedDataManager: Extracting data from: \(data)")
         
         guard let notes = data["notes"] as? String,
@@ -329,6 +340,24 @@ class SharedDataManager {
         let sourceBundleId = data["sourceBundleId"] as? String ?? ""
         let contact = data["contact"] as? String ?? ""
         let url = data["url"] as? String ?? ""
+        
+        // Try to extract full Person object with phone numbers
+        var person: Person?
+        if let personData = data["person"] as? [String: Any] {
+            print("🔍 SharedDataManager: Found person data, attempting to deserialize...")
+            if let personJsonData = try? JSONSerialization.data(withJSONObject: personData),
+               let decodedPerson = try? JSONDecoder().decode(Person.self, from: personJsonData) {
+                person = decodedPerson
+                print("✅ SharedDataManager: Successfully decoded Person with \(decodedPerson.phoneNumbers.count) phone numbers")
+                for (index, phoneNumber) in decodedPerson.phoneNumbers.enumerated() {
+                    print("   📱 Phone \(index + 1): \(phoneNumber)")
+                }
+            } else {
+                print("❌ SharedDataManager: Failed to decode Person object")
+            }
+        } else {
+            print("🔍 SharedDataManager: No person data found, will create from contact name")
+        }
         
         print("🔍 SharedDataManager: === PROCESSING SHARED DATA ===")
         print("   - notes: \(String(notes.prefix(50)))")
@@ -368,7 +397,8 @@ class SharedDataManager {
             type: followType,
             contact: finalContact,
             app: appKind,
-            url: url
+            url: url,
+            person: person
         )
     }
     

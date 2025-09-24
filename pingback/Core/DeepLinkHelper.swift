@@ -12,8 +12,19 @@ struct DeepLinkHelper {
     /// - Returns: True if the deep link was attempted, false if not supported
     @discardableResult
     static func openChat(for followUp: FollowUp, person: Person? = nil, message: String) -> Bool {
+        print("🔗 DeepLinkHelper.openChat(for:person:message:) called!")
+        print("   - FollowUp ID: \(followUp.id)")
+        print("   - App Type: \(followUp.appType.label)")
+        print("   - Person: \(followUp.person.displayName)")
+        print("   - Message: '\(message)'")
+        
         let targetPerson = person ?? followUp.person
-        return openChat(appType: followUp.appType, person: targetPerson, message: message)
+        print("   - Target Person: \(targetPerson.displayName)")
+        print("   - Target Phone: \(targetPerson.e164PhoneNumber ?? "nil")")
+        
+        let result = openChat(appType: followUp.appType, person: targetPerson, message: message)
+        print("   - openChat result: \(result)")
+        return result
     }
     
     /// Open a chat for the specified app type, person, and message
@@ -24,14 +35,25 @@ struct DeepLinkHelper {
     /// - Returns: True if the deep link was attempted, false if not supported
     @discardableResult
     static func openChat(appType: AppKind, person: Person, message: String) -> Bool {
+        print("🔗 DeepLinkHelper.openChat(appType:person:message:) called!")
+        print("   - App Type: \(appType.label) (\(appType.rawValue))")
+        print("   - Person: \(person.displayName)")
+        print("   - Phone Numbers: \(person.phoneNumbers)")
+        print("   - E164 Phone: \(person.e164PhoneNumber ?? "nil")")
+        print("   - Message: '\(message)'")
+        
         switch appType {
         case .whatsapp:
+            print("🔗 DeepLinkHelper: Routing to WhatsApp...")
             return openWhatsAppChat(person: person, message: message)
         case .telegram:
+            print("🔗 DeepLinkHelper: Routing to Telegram...")
             return openTelegramChat(person: person, message: message)
         case .sms:
+            print("🔗 DeepLinkHelper: Routing to SMS...")
             return openSMSChat(person: person, message: message)
         case .slack:
+            print("🔗 DeepLinkHelper: Routing to Slack...")
             return openSlackChat(person: person, message: message)
         case .instagram, .email, .gmail, .outlook, .chrome, .safari:
             print("❌ DeepLink: \(appType.label) not supported for deep linking")
@@ -42,43 +64,69 @@ struct DeepLinkHelper {
     // MARK: - WhatsApp Deep Linking
     
     private static func openWhatsAppChat(person: Person, message: String) -> Bool {
+        print("📱 DeepLinkHelper.openWhatsAppChat() called!")
+        print("   - Person: \(person.displayName)")
+        print("   - Phone Numbers Array: \(person.phoneNumbers)")
+        print("   - E164 Phone Number: \(person.e164PhoneNumber ?? "nil")")
+        print("   - Message: '\(message)'")
+        
         guard let phoneNumber = person.e164PhoneNumber else {
             print("❌ DeepLink: No phone number available for WhatsApp")
             return false
         }
         
         let digitsOnly = phoneNumber.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
-        let encodedMessage = message.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        print("📱 DeepLink: Extracted digits from phone: '\(phoneNumber)' → '\(digitsOnly)'")
+        print("📱 DeepLink: Message for context: '\(message)' (not pre-filling)")
         
-        // Primary WhatsApp deep link
-        let primaryURL = "whatsapp://send?phone=\(digitsOnly)&text=\(encodedMessage)"
+        // Primary WhatsApp deep link - open chat directly without pre-filling text
+        let primaryURL = "whatsapp://send?phone=\(digitsOnly)"
+        print("📱 DeepLink: Constructed primary URL: '\(primaryURL)'")
         
-        if let url = URL(string: primaryURL), UIApplication.shared.canOpenURL(url) {
-            UIApplication.shared.open(url, options: [:]) { success in
-                if success {
-                    print("✅ DeepLink: Opened WhatsApp chat successfully")
-                } else {
-                    print("❌ DeepLink: Failed to open WhatsApp chat")
+        if let url = URL(string: primaryURL) {
+            print("📱 DeepLink: URL object created successfully")
+            let canOpen = UIApplication.shared.canOpenURL(url)
+            print("📱 DeepLink: canOpenURL(\(primaryURL)) = \(canOpen)")
+            
+            if canOpen {
+                print("📱 DeepLink: Attempting to open WhatsApp...")
+                UIApplication.shared.open(url, options: [:]) { success in
+                    if success {
+                        print("✅ DeepLink: Opened WhatsApp chat successfully to \(digitsOnly)")
+                        print("💬 DeepLink: Landed user directly in chat (no text pre-filled)")
+                    } else {
+                        print("❌ DeepLink: Failed to open WhatsApp chat")
+                    }
                 }
+                return true
+            } else {
+                print("⚠️ DeepLink: Cannot open WhatsApp URL, trying fallback...")
             }
-            return true
+        } else {
+            print("❌ DeepLink: Failed to create URL object from: '\(primaryURL)'")
         }
         
-        // Fallback to WhatsApp web
-        let fallbackURL = "https://wa.me/\(digitsOnly)?text=\(encodedMessage)"
+        // Fallback to WhatsApp web - open chat directly without pre-filling text
+        let fallbackURL = "https://wa.me/\(digitsOnly)"
+        print("📱 DeepLink: Constructed fallback URL: '\(fallbackURL)'")
         
         if let url = URL(string: fallbackURL) {
+            print("📱 DeepLink: Fallback URL object created successfully")
+            print("📱 DeepLink: Attempting to open WhatsApp web fallback...")
             UIApplication.shared.open(url, options: [:]) { success in
                 if success {
-                    print("✅ DeepLink: Opened WhatsApp web fallback successfully")
+                    print("✅ DeepLink: Opened WhatsApp web fallback successfully to \(digitsOnly)")
+                    print("💬 DeepLink: Landed user directly in web chat (no text pre-filled)")
                 } else {
                     print("❌ DeepLink: Failed to open WhatsApp web fallback")
                 }
             }
             return true
+        } else {
+            print("❌ DeepLink: Failed to create fallback URL object from: '\(fallbackURL)'")
         }
         
-        print("❌ DeepLink: Unable to construct WhatsApp URL")
+        print("❌ DeepLink: Unable to construct any WhatsApp URL")
         return false
     }
     

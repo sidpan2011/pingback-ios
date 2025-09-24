@@ -14,7 +14,7 @@ struct LaunchGateView: View {
     @EnvironmentObject var followUpStore: FollowUpStore
     @EnvironmentObject var newFollowUpStore: NewFollowUpStore
     @EnvironmentObject var themeManager: ThemeManager
-    
+    @Environment(\.colorScheme) private var scheme
     var body: some View {
         ZStack {
             // Background
@@ -62,10 +62,10 @@ struct LaunchGateView: View {
                         Text("Get Started")
                             .font(.headline)
                             .fontWeight(.semibold)
-                            .foregroundColor(.white)
+                            .foregroundStyle(scheme == .dark ? Color.black : Color.white)
                             .frame(maxWidth: .infinity)
                             .frame(height: 50)
-                            .background(Color.primary)
+                            .background(scheme == .dark ? Color.white : Color.black)
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
                     .padding(.horizontal, 32)
