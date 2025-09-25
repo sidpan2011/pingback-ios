@@ -36,34 +36,52 @@ class NotificationService: NSObject {
         let center = UNUserNotificationCenter.current()
         center.delegate = self
         
-        // Create actions for WhatsApp-only mode
-        let bumpAction = UNNotificationAction(
-            identifier: bumpActionId,
-            title: "Bump",
-            options: [.foreground] // Opens app for post-bump flow
-        )
+        // Check if user is Pro to determine available actions
+        let isPro = checkProStatus()
         
-        let snoozeHourAction = UNNotificationAction(
-            identifier: snoozeHourActionId,
-            title: "Snooze +1h",
-            options: []
-        )
+        var actions: [UNNotificationAction] = []
         
-        let markDoneAction = UNNotificationAction(
-            identifier: markDoneActionId,
-            title: "Done",
-            options: []
-        )
+        if isPro {
+            // Pro users get rich notification actions
+            let bumpAction = UNNotificationAction(
+                identifier: bumpActionId,
+                title: "Bump",
+                options: [.foreground] // Opens app for post-bump flow
+            )
+            
+            let snoozeHourAction = UNNotificationAction(
+                identifier: snoozeHourActionId,
+                title: "Snooze +1h",
+                options: []
+            )
+            
+            let markDoneAction = UNNotificationAction(
+                identifier: markDoneActionId,
+                title: "Done",
+                options: []
+            )
+            
+            actions = [bumpAction, snoozeHourAction, markDoneAction]
+        }
+        // Free users get no actions (standard notifications only)
         
         // Create category
         let followUpCategory = UNNotificationCategory(
             identifier: followUpCategoryId,
-            actions: [bumpAction, snoozeHourAction, markDoneAction],
+            actions: actions,
             intentIdentifiers: [],
             options: [.customDismissAction]
         )
         
         center.setNotificationCategories([followUpCategory])
+    }
+    
+    private func checkProStatus() -> Bool {
+        // Check subscription status from shared UserDefaults
+        guard let appGroupDefaults = UserDefaults(suiteName: "group.app.pingback.shared") else {
+            return false
+        }
+        return appGroupDefaults.bool(forKey: "isProUser")
     }
     
     // MARK: - Scheduling
@@ -75,7 +93,16 @@ class NotificationService: NSObject {
         let content = UNMutableNotificationContent()
         content.title = "Follow up with \(followUp.person.displayName)"
         content.body = followUp.note
-        content.sound = .default
+        
+        // Pro users get custom tones, free users get default
+        let isPro = checkProStatus()
+        if isPro {
+            // Pro users can have custom notification sounds
+            content.sound = .default // TODO: Allow custom tones for Pro users
+        } else {
+            content.sound = .default
+        }
+        
         content.categoryIdentifier = followUpCategoryId
         
         // Add follow-up data to userInfo

@@ -2,7 +2,7 @@ import SwiftUI
 import RevenueCat
 
 struct RevenueCatDebugView: View {
-    @StateObject private var subscriptionManager = RevenueCatManager.shared
+    @EnvironmentObject private var subscriptionManager: SubscriptionManager
     @State private var debugInfo: [String] = []
     @Environment(\.dismiss) private var dismiss
     
@@ -11,7 +11,6 @@ struct RevenueCatDebugView: View {
             List {
                 Section("RevenueCat Status") {
                     DebugRow(title: "SDK Configured", value: "\(Purchases.isConfigured)")
-                    DebugRow(title: "Connection Status", value: subscriptionManager.connectionStatus)
                     DebugRow(title: "Is Loading", value: "\(subscriptionManager.isLoading)")
                     DebugRow(title: "Has Offerings", value: "\(subscriptionManager.hasOfferings)")
                     DebugRow(title: "Is Pro", value: "\(subscriptionManager.isPro)")

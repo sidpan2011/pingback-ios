@@ -5,22 +5,24 @@ struct OnboardingView: View {
     @Environment(\.colorScheme) private var scheme
     @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = false
     @State private var currentStep = 0
+    @State private var showNotificationPermission = false
+    @StateObject private var notificationManager = NotificationManager.shared
     
     private let steps = [
         OnboardingStep(
-            icon: "bell.fill",
-            title: "Never Miss a Follow-up",
-            description: "Stay on top of your important conversations and commitments with smart reminders."
-        ),
-        OnboardingStep(
-            icon: "clock.arrow.circlepath",
-            title: "Snooze & Reschedule",
-            description: "Life gets busy. Easily snooze follow-ups and reschedule them for when you're ready."
+            icon: "infinity.circle.fill",
+            title: "Unlimited Reminders",
+            description: "Create as many follow-up reminders as you need to stay on top of your commitments."
         ),
         OnboardingStep(
             icon: "app.connected.to.app.below.fill",
-            title: "Connect Your Apps",
-            description: "Seamlessly integrate with WhatsApp, Telegram, Email, SMS, and Instagram."
+            title: "All Integrations",
+            description: "Seamlessly connect with WhatsApp, Telegram, Slack, Gmail, Outlook, and Chrome share."
+        ),
+        OnboardingStep(
+            icon: "clock.badge.checkmark.fill",
+            title: "Smart Scheduling",
+            description: "Custom snooze times and recurring reminders to fit your workflow perfectly."
         )
     ]
     
@@ -78,7 +80,7 @@ struct OnboardingView: View {
                     } else {
                         // Final "Let's Go" button
                         Button(action: {
-                            completeOnboarding()
+                            showNotificationPermission = true
                         }) {
                             Text("Let's Go!")
                                 .font(.headline)
@@ -95,6 +97,12 @@ struct OnboardingView: View {
                 .padding(.bottom, 50)
             }
             .navigationBarHidden(true)
+        }
+        .sheet(isPresented: $showNotificationPermission) {
+            NotificationPermissionView { granted in
+                print("📱 Onboarding: Notification permission granted: \(granted)")
+                completeOnboarding()
+            }
         }
     }
     

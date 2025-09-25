@@ -27,6 +27,12 @@ struct RevenueCatConfiguration {
     
     // MARK: - Configuration
     static func configure() {
+        // Only configure if not already configured
+        guard !Purchases.isConfigured else {
+            print("🔵 RevenueCat already configured")
+            return
+        }
+        
         // Set up RevenueCat with the API key
         Purchases.configure(withAPIKey: apiKey)
         
@@ -41,9 +47,6 @@ struct RevenueCatConfiguration {
         print("🔵 RevenueCat SDK configured: \(Purchases.isConfigured)")
         print("🔵 RevenueCat API Key: \(apiKey)")
         print("🔵 RevenueCat App User ID: \(Purchases.shared.appUserID)")
-        
-        // Test initial connection
-        testSDKConnection()
         
         // Set up user attributes (optional)
         // You can set user attributes for analytics and personalization

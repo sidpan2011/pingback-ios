@@ -6,6 +6,7 @@ struct PostBumpSheet: View {
     let onSnooze: (TimeInterval) -> Void
     let onKeepOpen: () -> Void
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var subscriptionManager: SubscriptionManager
     
     var body: some View {
         NavigationStack {
@@ -48,8 +49,8 @@ struct PostBumpSheet: View {
                 
                 // Action buttons
                 VStack(spacing: 12) {
-                    if followUp.cadence != .none {
-                        // If has cadence, offer Done & reschedule
+                    if followUp.cadence != .none && subscriptionManager.isPro {
+                        // If has cadence and user is Pro, offer Done & reschedule
                         Button {
                             onDone()
                             dismiss()
@@ -72,7 +73,7 @@ struct PostBumpSheet: View {
                             .cornerRadius(12)
                         }
                     } else {
-                        // No cadence, just mark done
+                        // No cadence or not Pro, just mark done
                         Button {
                             onDone()
                             dismiss()
@@ -91,40 +92,60 @@ struct PostBumpSheet: View {
                         }
                     }
                     
-                    // Snooze options
-                    Menu {
-                        Button("1 hour") {
-                            onSnooze(3600)
+                    // Snooze options (Pro only)
+                    if subscriptionManager.isPro {
+                        Menu {
+                            Button("1 hour") {
+                                onSnooze(3600)
+                                dismiss()
+                            }
+                            Button("Tonight 6 PM") {
+                                let tonightSix = Calendar.current.dateInterval(of: .day, for: Date())?.start
+                                    .addingTimeInterval(18 * 3600) ?? Date().addingTimeInterval(3600)
+                                onSnooze(tonightSix.timeIntervalSince(Date()))
+                                dismiss()
+                            }
+                            Button("Tomorrow 9 AM") {
+                                let tomorrowNine = Calendar.current.date(byAdding: .day, value: 1, to: Date())
+                                    .flatMap { Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: $0) }
+                                    ?? Date().addingTimeInterval(24 * 3600)
+                                onSnooze(tomorrowNine.timeIntervalSince(Date()))
+                                dismiss()
+                            }
+                        } label: {
+                            HStack {
+                                Image(systemName: "clock")
+                                    .foregroundStyle(.orange)
+                                Text("Snooze")
+                                    .fontWeight(.medium)
+                                    .foregroundStyle(.orange)
+                                Spacer()
+                                Image(systemName: "chevron.down")
+                                    .font(.caption)
+                                    .foregroundStyle(.orange)
+                            }
+                            .padding()
+                            .background(.orange.opacity(0.1))
+                            .cornerRadius(12)
+                        }
+                    } else {
+                        // Free users get basic snooze (1 hour only)
+                        Button {
+                            onSnooze(3600) // 1 hour only
                             dismiss()
+                        } label: {
+                            HStack {
+                                Image(systemName: "clock")
+                                    .foregroundStyle(.orange)
+                                Text("Snooze 1 Hour")
+                                    .fontWeight(.medium)
+                                    .foregroundStyle(.orange)
+                                Spacer()
+                            }
+                            .padding()
+                            .background(.orange.opacity(0.1))
+                            .cornerRadius(12)
                         }
-                        Button("Tonight 6 PM") {
-                            let tonightSix = Calendar.current.dateInterval(of: .day, for: Date())?.start
-                                .addingTimeInterval(18 * 3600) ?? Date().addingTimeInterval(3600)
-                            onSnooze(tonightSix.timeIntervalSince(Date()))
-                            dismiss()
-                        }
-                        Button("Tomorrow 9 AM") {
-                            let tomorrowNine = Calendar.current.date(byAdding: .day, value: 1, to: Date())
-                                .flatMap { Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: $0) }
-                                ?? Date().addingTimeInterval(24 * 3600)
-                            onSnooze(tomorrowNine.timeIntervalSince(Date()))
-                            dismiss()
-                        }
-                    } label: {
-                        HStack {
-                            Image(systemName: "clock")
-                                .foregroundStyle(.orange)
-                            Text("Snooze")
-                                .fontWeight(.medium)
-                                .foregroundStyle(.orange)
-                            Spacer()
-                            Image(systemName: "chevron.down")
-                                .font(.caption)
-                                .foregroundStyle(.orange)
-                        }
-                        .padding()
-                        .background(.orange.opacity(0.1))
-                        .cornerRadius(12)
                     }
                     
                     // Keep open

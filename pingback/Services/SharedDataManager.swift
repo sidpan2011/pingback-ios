@@ -22,6 +22,47 @@ class SharedDataManager {
     
     // MARK: - Public Methods
     
+    /// Calculate the current month's follow-up count from Core Data (excluding deleted ones)
+    func calculateCurrentMonthFollowUpCount() async -> Int {
+        do {
+            let calendar = Calendar.current
+            let now = Date()
+            
+            // Get the start of current month
+            let startOfMonth = calendar.dateInterval(of: .month, for: now)?.start ?? now
+            
+            // Create predicate for follow-ups created this month AND not deleted
+            let predicate = NSPredicate(format: "createdAt >= %@ AND deletedAt == nil", startOfMonth as NSDate)
+            
+            // Count follow-ups from Core Data
+            let count = try CoreDataStack.shared.count(entityType: CDFollowUp.self, predicate: predicate)
+            
+            print("📊 SharedDataManager: Calculated \(count) active follow-ups created this month (excluding deleted)")
+            return count
+            
+        } catch {
+            print("❌ SharedDataManager: Failed to calculate follow-up count: \(error)")
+            return 0
+        }
+    }
+    
+    /// Update the follow-up count in shared UserDefaults based on Core Data
+    func updateFollowUpCountInSharedDefaults() async {
+        guard let appGroupDefaults = UserDefaults(suiteName: appGroupIdentifier) else {
+            print("❌ SharedDataManager: Failed to access app group UserDefaults")
+            return
+        }
+        
+        let currentCount = await calculateCurrentMonthFollowUpCount()
+        let maxFreeFollowUps = 10
+        let remainingCount = max(0, maxFreeFollowUps - currentCount)
+        
+        appGroupDefaults.set(remainingCount, forKey: "followUpsRemaining")
+        appGroupDefaults.synchronize()
+        
+        print("📊 SharedDataManager: Updated shared count: \(remainingCount) remaining (used: \(currentCount)/\(maxFreeFollowUps))")
+    }
+    
     /// Process any pending shared follow-ups from the share extension
     func processPendingSharedFollowUps(using store: NewFollowUpStore) async {
         print("🔍 SharedDataManager: Starting to process pending shared follow-ups...")
@@ -115,7 +156,7 @@ class SharedDataManager {
                 print("🔄 SharedDataManager: Processing shared data \(index + 1)/\(sharedFollowUps.count)")
                 print("   - Raw data: \(sharedData)")
                 
-                if let (text, type, contact, app, url, person) = extractDataForStore(sharedData) {
+                if let (text, type, contact, app, url, person, dueAt) = extractDataForStore(sharedData) {
                     // Create content hash for deduplication based on content, not ID
                     let contentHash = createContentHash(text: text, contact: contact, app: app.rawValue)
                     
@@ -147,10 +188,12 @@ class SharedDataManager {
                             for (index, phoneNumber) in person.phoneNumbers.enumerated() {
                                 print("   📱 Phone \(index + 1): \(phoneNumber)")
                             }
-                            try await store.addWithPerson(from: text, type: type, person: person, app: app, url: urlToPass)
+                            print("📅 SharedDataManager: Passing dueAt to store: \(dueAt?.description ?? "nil")")
+                            try await store.addWithPerson(from: text, type: type, person: person, app: app, url: urlToPass, overrideDue: dueAt)
                         } else {
                             print("🔍 SharedDataManager: No Person object, using contact string: '\(contact)'")
-                            try await store.add(from: text, type: type, contact: contact, app: app, url: urlToPass)
+                            print("📅 SharedDataManager: Passing dueAt to store: \(dueAt?.description ?? "nil")")
+                            try await store.add(from: text, type: type, contact: contact, app: app, url: urlToPass, overrideDue: dueAt)
                         }
                         
                         processedContentHashes.insert(contentHash)
@@ -270,17 +313,27 @@ class SharedDataManager {
         print("🧹 SharedDataManager: Found \(duplicatesToRemove.count) duplicate follow-ups to remove")
         
         // Remove duplicates
+        var successfullyDeleted = 0
         for duplicateId in duplicatesToRemove {
             do {
                 // Find the follow-up by ID and delete it
                 if let followUpToDelete = followUps.first(where: { $0.id == duplicateId }) {
                     try await store.delete(followUpToDelete)
+                    successfullyDeleted += 1
                     print("🧹 SharedDataManager: Removed duplicate follow-up: \(duplicateId)")
                 }
             } catch {
                 print("❌ SharedDataManager: Error removing duplicate follow-up: \(error)")
             }
         }
+        
+        // Handle bulk deletion count update
+        if successfullyDeleted > 0 {
+            await SubscriptionManager.shared.handleBulkDeletion(deletedCount: successfullyDeleted)
+        }
+        
+        // Also update shared defaults
+        await updateFollowUpCountInSharedDefaults()
         
         print("🧹 SharedDataManager: Cleanup completed")
     }
@@ -324,7 +377,7 @@ class SharedDataManager {
         UserDefaults.standard.synchronize()
     }
     
-    private func extractDataForStore(_ data: [String: Any]) -> (text: String, type: FollowType, contact: String, app: AppKind, url: String, person: Person?)? {
+    private func extractDataForStore(_ data: [String: Any]) -> (text: String, type: FollowType, contact: String, app: AppKind, url: String, person: Person?, dueAt: Date?)? {
         print("🔍 SharedDataManager: Extracting data from: \(data)")
         
         guard let notes = data["notes"] as? String,
@@ -340,6 +393,15 @@ class SharedDataManager {
         let sourceBundleId = data["sourceBundleId"] as? String ?? ""
         let contact = data["contact"] as? String ?? ""
         let url = data["url"] as? String ?? ""
+        
+        // Extract dueAt date if available
+        var dueAt: Date?
+        if let dueAtString = data["dueAt"] as? String {
+            dueAt = ISO8601DateFormatter().date(from: dueAtString)
+            print("🔍 SharedDataManager: Extracted dueAt: \(dueAt?.description ?? "nil")")
+        } else {
+            print("🔍 SharedDataManager: No dueAt found in shared data")
+        }
         
         // Try to extract full Person object with phone numbers
         var person: Person?
@@ -398,7 +460,8 @@ class SharedDataManager {
             contact: finalContact,
             app: appKind,
             url: url,
-            person: person
+            person: person,
+            dueAt: dueAt
         )
     }
     

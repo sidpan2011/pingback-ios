@@ -210,8 +210,22 @@ struct NotificationsView: View {
                 }
             }
             .foregroundColor(.primary)
+            
+            Button("Test Follow-up Creation") {
+                Task {
+                    await sendImmediateTestNotification()
+                }
+            }
+            .foregroundColor(.primary)
+            
+            Button("Test Due Notification") {
+                Task {
+                    await sendDueTestNotification()
+                }
+            }
+            .foregroundColor(.primary)
         } footer: {
-            Text("Test your notification settings. The test notification will appear in 3 seconds.")
+            Text("Test your notification settings. The test notification will appear in 3 seconds, and the follow-up creation test will appear in 1 second.")
         }
     }
     
@@ -238,19 +252,39 @@ struct NotificationsView: View {
         let impactFeedback = UIImpactFeedbackGenerator(style: .light)
         impactFeedback.impactOccurred()
         
+        // Use NotificationManager's test method
+        await notificationManager.sendTestNotification()
+        
+        // Also send a custom test notification
         let content = UNMutableNotificationContent()
         content.title = "Test Notification"
         content.body = "Your notification settings are working correctly! 🎉"
         content.sound = .default
         
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 3, repeats: false)
-        let request = UNNotificationRequest(identifier: "test_notification", content: content, trigger: trigger)
+        let request = UNNotificationRequest(identifier: "test_notification_custom", content: content, trigger: trigger)
         
         do {
             try await UNUserNotificationCenter.current().add(request)
         } catch {
             print("Failed to send test notification: \(error)")
         }
+    }
+    
+    private func sendImmediateTestNotification() async {
+        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+        impactFeedback.impactOccurred()
+        
+        // Test immediate follow-up creation notification
+        await notificationManager.sendImmediateTestNotification()
+    }
+    
+    private func sendDueTestNotification() async {
+        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+        impactFeedback.impactOccurred()
+        
+        // Test due notification
+        await notificationManager.testImmediateDueNotification()
     }
     
     private func saveNotificationSettings() {

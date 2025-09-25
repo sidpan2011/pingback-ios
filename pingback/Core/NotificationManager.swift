@@ -47,7 +47,7 @@ class NotificationManager: NSObject, ObservableObject {
         // Initialize settings from UserDefaults
         self.dueRemindersEnabled = UserDefaults.standard.object(forKey: "notifications.dueReminders") as? Bool ?? true
         self.overdueAlertsEnabled = UserDefaults.standard.object(forKey: "notifications.overdueAlerts") as? Bool ?? true
-        self.creationNudgeEnabled = UserDefaults.standard.object(forKey: "notifications.creationNudge") as? Bool ?? false
+        self.creationNudgeEnabled = UserDefaults.standard.object(forKey: "notifications.creationNudge") as? Bool ?? true
         self.quietHoursEnabled = UserDefaults.standard.object(forKey: "notifications.quietHours") as? Bool ?? false
         
         // Default quiet hours: 10 PM to 8 AM
@@ -169,11 +169,93 @@ class NotificationManager: NSObject, ObservableObject {
         let settings = await notificationCenter.notificationSettings()
         authorizationStatus = settings.authorizationStatus
         isEnabled = settings.authorizationStatus == .authorized
+        
+        print("🔔 NotificationManager: Authorization status: \(authorizationStatus.rawValue), isEnabled: \(isEnabled)")
+        
+        // If not determined, request permission
+        if authorizationStatus == .notDetermined {
+            print("🔔 NotificationManager: Permission not determined, requesting...")
+            let granted = await requestPermission()
+            print("🔔 NotificationManager: Permission request result: \(granted)")
+        }
+    }
+    
+    // MARK: - Test Methods
+    func sendTestNotification() async {
+        guard isEnabled else {
+            print("🔔 NotificationManager: Cannot send test notification - notifications disabled")
+            return
+        }
+        
+        let content = UNMutableNotificationContent()
+        content.title = "Pingback Test"
+        content.body = "This is a test notification from Pingback"
+        content.sound = .default
+        
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+        let request = UNNotificationRequest(identifier: "test_notification", content: content, trigger: trigger)
+        
+        do {
+            try await notificationCenter.add(request)
+            print("✅ NotificationManager: Test notification scheduled")
+        } catch {
+            print("❌ NotificationManager: Failed to schedule test notification: \(error)")
+        }
+    }
+    
+    /// Send an immediate test notification for follow-up creation
+    func sendImmediateTestNotification() async {
+        guard isEnabled else {
+            print("🔔 NotificationManager: Cannot send immediate test notification - notifications disabled")
+            return
+        }
+        
+        let content = UNMutableNotificationContent()
+        content.title = "Follow-up created"
+        content.body = "Don't forget: Test follow-up"
+        content.sound = .default
+        
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+        let request = UNNotificationRequest(identifier: "immediate_test_notification", content: content, trigger: trigger)
+        
+        do {
+            try await notificationCenter.add(request)
+            print("✅ NotificationManager: Immediate test notification scheduled")
+        } catch {
+            print("❌ NotificationManager: Failed to schedule immediate test notification: \(error)")
+        }
+    }
+    
+    /// Test scheduling a notification with a due date in the past (should fire immediately)
+    func testImmediateDueNotification() async {
+        guard isEnabled else {
+            print("🔔 NotificationManager: Cannot send test due notification - notifications disabled")
+            return
+        }
+        
+        let content = UNMutableNotificationContent()
+        content.title = "Test Due Notification"
+        content.body = "This follow-up is due now!"
+        content.sound = .default
+        
+        // Schedule for 1 second from now (simulating a due notification)
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+        let request = UNNotificationRequest(identifier: "test_due_notification", content: content, trigger: trigger)
+        
+        do {
+            try await notificationCenter.add(request)
+            print("✅ NotificationManager: Test due notification scheduled")
+        } catch {
+            print("❌ NotificationManager: Failed to schedule test due notification: \(error)")
+        }
     }
     
     // MARK: - Scheduling Methods
     func scheduleCreationNudge(for followUp: CDFollowUp) {
-        guard creationNudgeEnabled, isEnabled else { return }
+        guard creationNudgeEnabled, isEnabled else { 
+            print("🔔 NotificationManager: Creation nudge disabled - creationNudgeEnabled: \(creationNudgeEnabled), isEnabled: \(isEnabled)")
+            return 
+        }
         
         let identifier = "\(followUp.id?.uuidString ?? UUID().uuidString)_creation"
         let content = UNMutableNotificationContent()
@@ -192,19 +274,30 @@ class NotificationManager: NSObject, ObservableObject {
             trigger: trigger
         )
         
+        print("🔔 NotificationManager: Scheduling creation nudge for '\(followUp.title ?? "Untitled")' in \(Self.creationNudgeDelay) seconds")
+        
         notificationCenter.add(request) { error in
             if let error = error {
                 print("❌ NotificationManager: Failed to schedule creation nudge: \(error)")
+            } else {
+                print("✅ NotificationManager: Successfully scheduled creation nudge")
             }
         }
     }
     
     func scheduleNotification(for followUp: CDFollowUp) async {
-        guard isEnabled, dueRemindersEnabled else { return }
-        guard let followUpId = followUp.id else { return }
+        guard isEnabled, dueRemindersEnabled else { 
+            print("🔔 NotificationManager: Notifications disabled - isEnabled: \(isEnabled), dueRemindersEnabled: \(dueRemindersEnabled)")
+            return 
+        }
+        guard let followUpId = followUp.id else { 
+            print("🔔 NotificationManager: No follow-up ID found")
+            return 
+        }
         
         // Skip if already completed or notifications disabled for this item
         if followUp.isCompleted || !followUp.shouldNotify {
+            print("🔔 NotificationManager: Skipping notification - isCompleted: \(followUp.isCompleted), shouldNotify: \(followUp.shouldNotify)")
             await cancelNotification(for: followUpId)
             return
         }
@@ -213,10 +306,13 @@ class NotificationManager: NSObject, ObservableObject {
         let nextFireTime: Date
         if let snoozedUntil = followUp.snoozedUntil, snoozedUntil > Date() {
             nextFireTime = snoozedUntil
+            print("🔔 NotificationManager: Using snoozed time: \(snoozedUntil)")
         } else if let dueAt = followUp.dueAt {
             nextFireTime = dueAt
+            print("🔔 NotificationManager: Using due time: \(dueAt)")
         } else {
             // No due date, can't schedule
+            print("🔔 NotificationManager: No due date found, cannot schedule notification")
             return
         }
         
@@ -249,6 +345,7 @@ class NotificationManager: NSObject, ObservableObject {
         notificationCenter.removePendingNotificationRequests(withIdentifiers: [identifier])
         
         do {
+            print("🔔 NotificationManager: Attempting to schedule notification for '\(followUp.title ?? "Untitled")' at \(adjustedFireTime)")
             try await notificationCenter.add(request)
             scheduledNotificationIds.insert(identifier)
             
@@ -256,9 +353,9 @@ class NotificationManager: NSObject, ObservableObject {
             followUp.lastScheduledAt = adjustedFireTime
             try? coreDataContext?.save()
             
-            print("✅ NotificationManager: Scheduled notification for \(followUp.title ?? "Untitled") at \(adjustedFireTime)")
+            print("✅ NotificationManager: Successfully scheduled notification for '\(followUp.title ?? "Untitled")' at \(adjustedFireTime)")
         } catch {
-            print("❌ NotificationManager: Failed to schedule notification: \(error)")
+            print("❌ NotificationManager: Failed to schedule notification for '\(followUp.title ?? "Untitled")': \(error)")
         }
     }
     

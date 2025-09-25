@@ -12,8 +12,7 @@ struct ShareQuickTimeOption {
 @MainActor
 class ShareExtensionViewModel: ObservableObject {
     @Published var isLoading = true
-    // WhatsApp-only mode - app is always WhatsApp
-    let selectedApp: AppKind = .whatsapp
+    @Published var selectedApp: AppKind = .whatsapp
     @Published var selectedPerson: Person?
     @Published var selectedType: FollowType = .doIt
     @Published var messagePreview = ""
@@ -74,7 +73,66 @@ class ShareExtensionViewModel: ObservableObject {
         return "Respects quiet hours (10 PM - 7 AM)"
     }
     
+    var isProUser: Bool {
+        // Check subscription status from shared UserDefaults
+        guard let appGroupDefaults = UserDefaults(suiteName: "group.app.pingback.shared") else {
+            return false
+        }
+        return appGroupDefaults.bool(forKey: "isProUser")
+    }
+    
+    func getAvailableApps() -> [AppKind] {
+        if isProUser {
+            return AppKind.allCases
+        } else {
+            // Free users only get basic integrations
+            return AppKind.allCases.filter { app in
+                switch app {
+                case .whatsapp, .sms, .email, .safari:
+                    return true // Free
+                case .telegram, .slack, .gmail, .outlook, .chrome, .instagram:
+                    return false // Pro only
+                }
+            }
+        }
+    }
+    
+    private func isFreeApp(_ app: AppKind) -> Bool {
+        switch app {
+        case .whatsapp, .sms, .email, .safari:
+            return true
+        case .telegram, .slack, .gmail, .outlook, .chrome, .instagram:
+            return false
+        }
+    }
+    
     var selectedDueDate: Date {
+        // If user has manually enabled date/time pickers, use their selections
+        if isDateEnabled || isTimeEnabled {
+            let calendar = Calendar.current
+            
+            if isDateEnabled && isTimeEnabled {
+                // Both date and time are enabled - combine them
+                let dateComponents = calendar.dateComponents([.year, .month, .day], from: selectedDate)
+                let timeComponents = calendar.dateComponents([.hour, .minute], from: selectedTime)
+                var combinedComponents = dateComponents
+                combinedComponents.hour = timeComponents.hour
+                combinedComponents.minute = timeComponents.minute
+                combinedComponents.second = 0
+                return calendar.date(from: combinedComponents) ?? selectedDate
+            } else if isDateEnabled {
+                // Only date is enabled - use selected date with current time
+                let timeComponents = calendar.dateComponents([.hour, .minute], from: Date())
+                return calendar.date(bySettingHour: timeComponents.hour ?? 9, minute: timeComponents.minute ?? 0, second: 0, of: selectedDate) ?? selectedDate
+            } else if isTimeEnabled {
+                // Only time is enabled - use today's date with selected time
+                let today = calendar.startOfDay(for: Date())
+                let timeComponents = calendar.dateComponents([.hour, .minute], from: selectedTime)
+                return calendar.date(bySettingHour: timeComponents.hour ?? 9, minute: timeComponents.minute ?? 0, second: 0, of: today) ?? selectedTime
+            }
+        }
+        
+        // Fallback to quick time options or custom date
         if selectedQuickTime == "Custom" {
             return customDateTime
         } else if let option = quickTimeOptions.first(where: { $0.title == selectedQuickTime }) {
@@ -210,14 +268,31 @@ class ShareExtensionViewModel: ObservableObject {
         
         print("🔵 Person details: firstName='\(person.firstName)', phoneNumbers=\(person.phoneNumbers)")
         
+        // Check if selected app is a pro feature and user is not pro
+        if !isProUser && !isFreeApp(selectedApp) {
+            print("🔴 Save failed: Pro feature selected but user is not pro")
+            errorMessage = "WhatsApp integration requires Pro. Upgrade to Pro to use this feature."
+            showError = true
+            return
+        }
+        
         do {
+            let finalDueDate = selectedDueDate
+            print("🔵 ShareExtension: Creating follow-up with due date:")
+            print("   - isDateEnabled: \(isDateEnabled)")
+            print("   - isTimeEnabled: \(isTimeEnabled)")
+            print("   - selectedDate: \(selectedDate)")
+            print("   - selectedTime: \(selectedTime)")
+            print("   - selectedQuickTime: \(selectedQuickTime ?? "nil")")
+            print("   - finalDueDate: \(finalDueDate)")
+            
             let followUp = FollowUp(
                 type: .doIt, // Auto-set to "do" as specified
                 person: person,
                 appType: selectedApp,
                 note: finalMessage,
                 url: extractedURL,
-                dueAt: selectedDueDate,
+                dueAt: finalDueDate,
                 cadence: .none // Default cadence
             )
             
@@ -299,6 +374,10 @@ class ShareExtensionViewModel: ObservableObject {
         // Save back as JSON
         let jsonData = try JSONSerialization.data(withJSONObject: existingSharedFollowUps)
         appGroupDefaults.set(jsonData, forKey: "shared_followups")
+        
+        // Update follow-up count for free tier users using Core Data
+        await updateFollowUpCountFromCoreData()
+        
         appGroupDefaults.synchronize()
         
         print("📱 ShareExtension: Saved follow-up to shared storage:")
@@ -307,6 +386,30 @@ class ShareExtensionViewModel: ObservableObject {
         print("   - person phone numbers: \(followUp.person.phoneNumbers)")
         print("   - app: \(followUp.appType.label)")
         print("   - dueAt: \(followUp.dueAt)")
+    }
+    
+    private func updateFollowUpCountFromCoreData() async {
+        guard let appGroupDefaults = UserDefaults(suiteName: "group.app.pingback.shared") else {
+            print("❌ ShareExtension: Failed to access app group UserDefaults")
+            return
+        }
+        
+        // Only update count for free users
+        guard !isProUser else {
+            print("✅ ShareExtension: Pro user - no count update needed")
+            return
+        }
+        
+        // For share extension, we'll just decrement the count and let the main app
+        // recalculate from Core Data when it becomes active
+        let currentCount = appGroupDefaults.integer(forKey: "followUpsRemaining")
+        let newCount = max(0, currentCount - 1)
+        
+        appGroupDefaults.set(newCount, forKey: "followUpsRemaining")
+        appGroupDefaults.synchronize()
+        
+        print("📊 ShareExtension: Updated count: \(currentCount) → \(newCount)")
+        print("📊 ShareExtension: Main app will recalculate from Core Data when active")
     }
     
     private func getBundleIdForApp(_ appKind: AppKind) -> String {

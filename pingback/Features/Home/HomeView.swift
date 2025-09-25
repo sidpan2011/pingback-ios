@@ -2,7 +2,9 @@ import SwiftUI
 
 struct HomeView: View {
     @EnvironmentObject private var store: NewFollowUpStore
+    @EnvironmentObject private var subscriptionManager: SubscriptionManager
     @StateObject private var userProfileStore = UserProfileStore()
+    @StateObject private var featureAccess = FeatureAccessLayer.shared
     @State private var query: String = ""
     @State private var selectedFilter: Filter = .all
     @State private var showAddSheet: Bool = false
@@ -42,6 +44,10 @@ struct HomeView: View {
                     .padding(.horizontal)
                     .padding(.top, 12)
 
+                usageDisplay
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+
                 searchField
                     .padding(.horizontal)
                     .padding(.top, 8)
@@ -79,9 +85,11 @@ struct HomeView: View {
             }
             .sheet(isPresented: $showAddSheet) {
                 AddFollowUpView(store: store)
+                    .environmentObject(SubscriptionManager.shared)
             }
             .sheet(item: $selectedItem) { item in
                 AddFollowUpView(store: store, existingItem: item)
+                    .environmentObject(SubscriptionManager.shared)
             }
             .sheet(isPresented: $showSettingsSheet) {
                 SettingsSheet()
@@ -139,6 +147,11 @@ struct HomeView: View {
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
                 print("🔄 APP LIFECYCLE: didBecomeActiveNotification received")
                 loadNotificationCount()
+                
+                // Update follow-up count from Core Data when app becomes active
+                Task {
+                    await subscriptionManager.updateFollowUpCountFromCoreData()
+                }
                 // Note: Removed duplicate processing to prevent multiple calls
             }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
@@ -189,6 +202,7 @@ struct HomeView: View {
                 }
                 .buttonStyle(.plain)
                 
+                
                 // Settings button
                 Button {
                     showSettingsSheet = true
@@ -216,6 +230,80 @@ struct HomeView: View {
             }
         }
         .padding(.vertical, 8)
+    }
+    
+    private var usageDisplay: some View {
+        HStack {
+            if subscriptionManager.isPro {
+                // Pro users don't see usage display
+                EmptyView()
+            } else {
+                VStack(spacing: 8) {
+                    HStack {
+                        Text("Free Plan")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundColor(.primary)
+                        Spacer()
+                        Text("\(featureAccess.getRemainingReminders())/10")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundColor(.primary)
+                    }
+                    
+                    // Progress bar
+                    GeometryReader { geometry in
+                        ZStack(alignment: .leading) {
+                            // Background
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(Color(.systemGray5))
+                                .frame(height: 8)
+                            
+                            // Progress
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(Color.primary)
+                                .frame(width: geometry.size.width * CGFloat(10 - featureAccess.getRemainingReminders()) / 10, height: 8)
+                        }
+                    }
+                    .frame(height: 8)
+                    
+                    HStack {
+                        Text("\(featureAccess.getRemainingReminders()) follow-ups remaining")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text("Resets \(nextResetDate)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    if featureAccess.getRemainingReminders() <= 2 {
+                        Button("Upgrade to Pro") {
+                            // This will be handled by the add button gating
+                        }
+                        .font(.caption)
+                        .foregroundColor(.blue)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.blue.opacity(0.1))
+                        .cornerRadius(6)
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color.blue.opacity(0.05))
+                .cornerRadius(8)
+            }
+        }
+    }
+    
+    private var nextResetDate: String {
+        let calendar = Calendar.current
+        let now = Date()
+        let nextMonth = calendar.date(byAdding: .month, value: 1, to: calendar.startOfDay(for: now)) ?? now
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d"
+        return formatter.string(from: nextMonth)
     }
 
     private var searchField: some View {
@@ -641,7 +729,6 @@ struct HomeView: View {
     }
     
     private func createMessage(for followUp: FollowUp) -> String {
-        // TODO: Use template system when implemented
         return followUp.note
     }
     
