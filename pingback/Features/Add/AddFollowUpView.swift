@@ -4,7 +4,9 @@ import ContactsUI
 
 struct AddFollowUpView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var subscriptionManager: SubscriptionManager
     @ObservedObject var store: NewFollowUpStore
+    @StateObject private var featureAccess = FeatureAccessLayer.shared
     
     let existingItem: FollowUp?
     
@@ -29,6 +31,9 @@ struct AddFollowUpView: View {
     @State private var selectedTime: Date = Date()
     @State private var showDateSheet: Bool = false
     @State private var showTimeSheet: Bool = false
+    @State private var showPaywall: Bool = false
+    @State private var showUsageLimitAlert: Bool = false
+    @State private var showProFeatureAlert: Bool = false
     
     init(store: NewFollowUpStore, existingItem: FollowUp? = nil) {
         self.store = store
@@ -43,6 +48,7 @@ struct AddFollowUpView: View {
                 appAndTagSection
                 urlSection
                 dateTimeSection
+                usageSection
             }
             .listStyle(.insetGrouped)
             .navigationTitle(existingItem == nil ? "New Follow-up" : "Edit Follow-up")
@@ -138,6 +144,25 @@ struct AddFollowUpView: View {
         .onChange(of: notes) { _, _ in
             parseText()
         }
+        .sheet(isPresented: $showPaywall) {
+            ProPaywallView()
+        }
+        .alert("Follow-up Limit Reached", isPresented: $showUsageLimitAlert) {
+            Button("Upgrade to Pro") {
+                showPaywall = true
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("You've reached your monthly limit of 10 follow-ups. Upgrade to Pro for unlimited follow-ups.")
+        }
+        .alert("Pro Feature Required", isPresented: $showProFeatureAlert) {
+            Button("Upgrade to Pro") {
+                showPaywall = true
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("\(selectedApp.label) integration requires Pro. Upgrade to Pro to use this feature.")
+        }
     }
     
     
@@ -203,20 +228,31 @@ struct AddFollowUpView: View {
                     .foregroundStyle(.secondary)
                 Spacer()
                 Menu {
-                    ForEach(AppKind.allCases) { app in
+                    ForEach(getAvailableApps()) { app in
                         Button {
                             selectedApp = app
                         } label: {
                             HStack {
                                 AppLogoView(app, size: 20)
                                 Text(app.label)
+                                if !featureAccess.isIntegrationAvailable(getIntegrationForApp(app)) {
+                                    Image(systemName: "lock.fill")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
                             }
                         }
+                        .disabled(!featureAccess.isIntegrationAvailable(getIntegrationForApp(app)))
                     }
                 } label: {
                     HStack {
                         AppLogoView(selectedApp, size: 20)
                         Text(selectedApp.label)
+                        if !featureAccess.isIntegrationAvailable(getIntegrationForApp(selectedApp)) {
+                            Image(systemName: "lock.fill")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
                     }
                     .foregroundStyle(.primary)
                 }
@@ -330,6 +366,52 @@ struct AddFollowUpView: View {
                 .foregroundStyle(.secondary)
         }
     }
+    
+    @ViewBuilder
+    private var usageSection: some View {
+        // Only show usage info for new follow-ups (not editing existing ones)
+        if existingItem == nil {
+            Section {
+                if subscriptionManager.isPro {
+                    HStack {
+                        Image(systemName: "crown.fill")
+                            .foregroundColor(.yellow)
+                        Text("Pro - Unlimited follow-ups")
+                            .foregroundColor(.primary)
+                        Spacer()
+                    }
+                } else {
+                    HStack {
+                        Image(systemName: "chart.bar.fill")
+                            .foregroundColor(.blue)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Free Plan")
+                                .foregroundColor(.primary)
+                            Text("\(featureAccess.getRemainingReminders()) follow-ups remaining this month")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        if featureAccess.getRemainingReminders() <= 2 {
+                            Button("Upgrade") {
+                                showPaywall = true
+                            }
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                        }
+                    }
+                }
+            } header: {
+                Text("Usage")
+            } footer: {
+                if !subscriptionManager.isPro {
+                    Text("Upgrade to Pro for unlimited follow-ups and advanced features.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+    }
 
     // MARK: - Computed Properties
     
@@ -366,6 +448,56 @@ struct AddFollowUpView: View {
     }
     
     // MARK: - Helper Methods
+    
+    private func getAvailableApps() -> [AppKind] {
+        if subscriptionManager.isPro {
+            return AppKind.allCases
+        } else {
+            // Free users only get basic integrations
+            return AppKind.allCases.filter { app in
+                switch app {
+                case .whatsapp, .sms, .email, .safari:
+                    return true // Free
+                case .telegram, .slack, .gmail, .outlook, .chrome, .instagram:
+                    return false // Pro only
+                }
+            }
+        }
+    }
+    
+    private func getIntegrationForApp(_ app: AppKind) -> Integration {
+        switch app {
+        case .sms:
+            return .messages
+        case .email:
+            return .mail
+        case .safari:
+            return .safariShare
+        case .whatsapp:
+            return .whatsapp
+        case .telegram:
+            return .telegram
+        case .slack:
+            return .slack
+        case .gmail:
+            return .gmail
+        case .outlook:
+            return .outlook
+        case .chrome:
+            return .chromeShare
+        case .instagram:
+            return .whatsapp // Instagram not supported in v1, map to WhatsApp
+        }
+    }
+    
+    private func isFreeApp(_ app: AppKind) -> Bool {
+        switch app {
+        case .whatsapp, .sms, .email, .safari:
+            return true
+        case .telegram, .slack, .gmail, .outlook, .chrome, .instagram:
+            return false
+        }
+    }
     
     private func formatDate(_ date: Date) -> String {
         let calendar = Calendar.current
@@ -496,6 +628,13 @@ struct AddFollowUpView: View {
             return 
         }
         
+        // Check follow-up limit for new follow-ups only
+        if existingItem == nil && !featureAccess.canCreateReminder() {
+            print("🚨 AddFollowUpView: Follow-up limit reached - showing alert")
+            showUsageLimitAlert = true
+            return
+        }
+        
         let finalContact = isForSelf ? "Self" : contactName
         let trimmedURL = url.trimmingCharacters(in: .whitespacesAndNewlines)
         
@@ -577,10 +716,21 @@ struct AddFollowUpView: View {
             print("   - Type: \(followUp.type.rawValue)")
             print("   - App: \(followUp.app.rawValue)")
             
+            // Check if selected app is a pro feature and user is not pro
+            if !subscriptionManager.isPro && !isFreeApp(selectedApp) {
+                print("🔴 AddFollowUpView: Pro feature selected but user is not pro")
+                showProFeatureAlert = true
+                return
+            }
+            
             Task {
                 do {
                     try await store.create(followUp)
                     print("✅ AddFollowUpView: Successfully created follow-up")
+                    
+                    // Update count from Core Data instead of manual decrementing
+                    await subscriptionManager.updateFollowUpCountFromCoreData()
+                    print("📊 AddFollowUpView: Updated count from Core Data. Remaining: \(subscriptionManager.followUpsRemaining)")
                 } catch {
                     print("❌ AddFollowUpView: Failed to create follow-up: \(error)")
                 }
@@ -634,6 +784,7 @@ struct AddFollowUpView: View {
 
 #Preview("New Follow-up") {
     AddFollowUpView(store: NewFollowUpStore())
+        .environmentObject(SubscriptionManager.shared)
 }
 
 #Preview("Edit Follow-up") {
@@ -648,4 +799,5 @@ struct AddFollowUpView: View {
         status: .open,
         lastNudgedAt: nil
     ))
+    .environmentObject(SubscriptionManager.shared)
 }

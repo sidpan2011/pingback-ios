@@ -14,6 +14,7 @@ struct pingbackApp: App {
     @StateObject private var userProfileStore = UserProfileStore()
     @ObservedObject private var themeManager = ThemeManager.shared
     @StateObject private var notificationManager = NotificationManager.shared
+    @StateObject private var subscriptionManager = SubscriptionManager.shared
     
     init() {
         print("🚀 pingbackApp: App is initializing...")
@@ -32,6 +33,7 @@ struct pingbackApp: App {
                 .environmentObject(userProfileStore)
                 .environmentObject(themeManager)
                 .environmentObject(notificationManager)
+                .environmentObject(subscriptionManager)
                 .preferredColorScheme(themeManager.colorScheme)
                 .animation(.easeInOut(duration: 0.1), value: themeManager.colorScheme)
                 .onReceive(themeManager.$colorScheme) { newColorScheme in
@@ -51,6 +53,15 @@ struct pingbackApp: App {
                     
                     // Initialize NotificationManager with Core Data context
                     notificationManager.initialize(with: coreDataStack.viewContext)
+                    
+                    // Initialize subscription manager
+                    await subscriptionManager.initializeSubscriptionState()
+                    await ProServiceGate.shared.configure(with: subscriptionManager)
+                    
+                    // Process any pending shared data from share extension
+                    print("🚀 pingbackApp: Processing shared data on app launch...")
+                    let newFollowUpStore = NewFollowUpStore()
+                    await SharedDataManager.shared.processOnAppLaunch(using: newFollowUpStore)
                 }
         }
     }

@@ -80,6 +80,12 @@ struct LaunchGateView: View {
         }
         .onAppear {
             if hasSeenOnboarding {
+                // Process any pending shared data before showing HomeView
+                Task {
+                    print("🚀 LaunchGateView: Processing shared data before showing HomeView...")
+                    await SharedDataManager.shared.processOnAppLaunch(using: newFollowUpStore)
+                }
+                
                 // User has seen onboarding - brief splash then go to HomeView
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                     withAnimation(.easeInOut(duration: 0.5)) {

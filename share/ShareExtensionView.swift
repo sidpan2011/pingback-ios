@@ -91,7 +91,10 @@ struct ShareExtensionView: View {
                             .foregroundStyle(.primary)
                     }
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Done") { viewModel.showDateSheet = false }
+                        Button("Done") { 
+                            print("🔵 ShareExtension: Date picker done, selectedDate: \(viewModel.selectedDate)")
+                            viewModel.showDateSheet = false 
+                        }
                             .foregroundStyle(.primary).fontWeight(.medium)
                     }
                 }
@@ -121,7 +124,10 @@ struct ShareExtensionView: View {
                             .foregroundStyle(.primary)
                     }
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Done") { viewModel.showTimeSheet = false }
+                        Button("Done") { 
+                            print("🔵 ShareExtension: Time picker done, selectedTime: \(viewModel.selectedTime)")
+                            viewModel.showTimeSheet = false 
+                        }
                             .foregroundStyle(.primary).fontWeight(.medium)
                     }
                 }
@@ -164,18 +170,42 @@ struct ShareExtensionView: View {
                     .foregroundStyle(.secondary)
                 Spacer()
                 Menu {
-                    ForEach(AppKind.allCases) { app in
+                    ForEach(viewModel.getAvailableApps()) { app in
                         Button {
-                            // selectedApp is constant (WhatsApp-only mode)
+                            viewModel.selectedApp = app
                         } label: {
-                            Text(app.label)
+                            HStack {
+                                Text(app.label)
+                                if !viewModel.isProUser && !isFreeApp(app) {
+                                    Image(systemName: "lock.fill")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
                         }
+                        .disabled(!viewModel.isProUser && !isFreeApp(app))
                     }
                 } label: {
-                    Text(viewModel.selectedApp.label)
-                        .foregroundStyle(.primary)
+                    HStack {
+                        Text(viewModel.selectedApp.label)
+                        if !viewModel.isProUser && !isFreeApp(viewModel.selectedApp) {
+                            Image(systemName: "lock.fill")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .foregroundStyle(.primary)
                 }
             }
+        }
+    }
+    
+    private func isFreeApp(_ app: AppKind) -> Bool {
+        switch app {
+        case .whatsapp, .sms, .email, .safari:
+            return true
+        case .telegram, .slack, .gmail, .outlook, .chrome, .instagram:
+            return false
         }
     }
     
@@ -198,7 +228,16 @@ struct ShareExtensionView: View {
                     }
                 }
                 Spacer()
-                Toggle("", isOn: $viewModel.isDateEnabled)
+                Toggle("", isOn: Binding(
+                    get: { viewModel.isDateEnabled },
+                    set: { newValue in
+                        print("🔵 ShareExtension: Date toggle changed to \(newValue)")
+                        viewModel.isDateEnabled = newValue
+                        if newValue {
+                            print("🔵 ShareExtension: Date enabled, selectedDate: \(viewModel.selectedDate)")
+                        }
+                    }
+                ))
             }
             .contentShape(Rectangle())
             .onTapGesture {
@@ -221,7 +260,16 @@ struct ShareExtensionView: View {
                     }
                 }
                 Spacer()
-                Toggle("", isOn: $viewModel.isTimeEnabled)
+                Toggle("", isOn: Binding(
+                    get: { viewModel.isTimeEnabled },
+                    set: { newValue in
+                        print("🔵 ShareExtension: Time toggle changed to \(newValue)")
+                        viewModel.isTimeEnabled = newValue
+                        if newValue {
+                            print("🔵 ShareExtension: Time enabled, selectedTime: \(viewModel.selectedTime)")
+                        }
+                    }
+                ))
             }
             .contentShape(Rectangle())
             .onTapGesture {

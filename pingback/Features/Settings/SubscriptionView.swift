@@ -4,8 +4,11 @@ import RevenueCat
 struct SubscriptionView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var themeManager: ThemeManager
-    @StateObject private var subscriptionManager = RevenueCatManager.shared
+    @EnvironmentObject private var subscriptionManager: SubscriptionManager
     @State private var showingCancelConfirmation = false
+    @State private var showingUpgradeView = false
+    @State private var showingRestoreAlert = false
+    @State private var restoreAlertMessage = ""
     
     private var subscriptionStatus: SubscriptionStatus {
         if subscriptionManager.isPro {
@@ -52,9 +55,11 @@ struct SubscriptionView: View {
                         }
                         
                         Spacer()
-                         Text("Pro Plan")
+                        if subscriptionStatus == .active {
+                            Text("Pro Plan")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
+                        }
                         
                         // Circle()
                         //     .fill(subscriptionStatus.color)
@@ -64,13 +69,14 @@ struct SubscriptionView: View {
                 }
                 
                 // Plan Details
-                Section("Plan Details") {
-                    HStack {
-                        Text("Plan")
-                        Spacer()
-                        Text("Pro")
-                            .foregroundColor(.secondary)
-                    }
+                if subscriptionStatus == .active {
+                    Section("Plan Details") {
+                        HStack {
+                            Text("Plan")
+                            Spacer()
+                            Text("Pro")
+                                .foregroundColor(.secondary)
+                        }
                     
                     HStack {
                         Text("Price")
@@ -88,11 +94,14 @@ struct SubscriptionView: View {
                         }
                     }
                     
-                    HStack {
-                        Text("Payment Method")
-                        Spacer()
-                        Text("•••• 1234")
-                            .foregroundColor(.secondary)
+                        if subscriptionStatus == .active {
+                            HStack {
+                                Text("Payment Method")
+                                Spacer()
+                                Text("Apple ID")
+                                    .foregroundColor(.secondary)
+                            }
+                        }
                     }
                 }
                 
@@ -113,8 +122,7 @@ struct SubscriptionView: View {
                         .foregroundColor(.red)
                     } else {
                         Button("Subscribe to Pro") {
-                            // This would open the subscription flow
-                            // You can navigate to RevenueCatSubscriptionView here
+                            showingUpgradeView = true
                         }
                         .foregroundColor(.green)
                     }
@@ -131,7 +139,15 @@ struct SubscriptionView: View {
                     
                     Button("Restore Purchases") {
                         Task {
-                            await subscriptionManager.restorePurchases()
+                            let success = await subscriptionManager.restorePurchases()
+                            if success {
+                                restoreAlertMessage = "Purchases restored successfully!"
+                            } else if let error = subscriptionManager.errorMessage {
+                                restoreAlertMessage = error
+                            } else {
+                                restoreAlertMessage = "No purchases found for this Apple ID"
+                            }
+                            showingRestoreAlert = true
                         }
                     }
                     .foregroundColor(.primary)
@@ -161,9 +177,19 @@ struct SubscriptionView: View {
             } message: {
                 Text("To cancel your subscription, please manage it through the App Store. You'll lose access to Pro features at the end of your current billing period.")
             }
+            .sheet(isPresented: $showingUpgradeView) {
+                ProPaywallView()
+            }
+            .alert("Restore Purchases", isPresented: $showingRestoreAlert) {
+                Button("OK") { }
+            } message: {
+                Text(restoreAlertMessage)
+            }
     }
 }
 
 #Preview {
     SubscriptionView()
+        .environmentObject(SubscriptionManager.shared)
+        .environmentObject(ThemeManager.shared)
 }

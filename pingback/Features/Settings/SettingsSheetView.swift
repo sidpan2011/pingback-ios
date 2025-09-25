@@ -5,7 +5,9 @@ struct SettingsSheetView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var store: FollowUpStore
     @EnvironmentObject private var themeManager: ThemeManager
+    @EnvironmentObject private var subscriptionManager: SubscriptionManager
     @State private var showingUpgrade = false
+    @State private var showingWhatsNew = false
     @State private var showingSubscription = false
     @State private var showingSignOut = false
     @State private var showingCalendar = false
@@ -54,12 +56,18 @@ struct SettingsSheetView: View {
                         .contentShape(Rectangle())
                     }
                     
-                    Button(action: { showingUpgrade = true }) {
+                    Button(action: { 
+                        if subscriptionManager.isPro {
+                            showingWhatsNew = true
+                        } else {
+                            showingUpgrade = true
+                        }
+                    }) {
                         HStack {
-                            Image(systemName: "crown.fill")
+                            Image(systemName: subscriptionManager.isPro ? "sparkles" : "crown.fill")
                                 .foregroundColor(.primary)
                                 .frame(width: 24, height: 24)
-                            Text("Upgrade to Pro")
+                            Text(subscriptionManager.isPro ? "What's New" : "Upgrade to Pro")
                                 .foregroundColor(.primary)
                             Spacer()
                             Image(systemName: "chevron.right")
@@ -255,11 +263,16 @@ struct SettingsSheetView: View {
                 }
             }
             .sheet(isPresented: $showingUpgrade) {
-                HybridPaywallView()
+                ProPaywallView()
+            }
+            .sheet(isPresented: $showingWhatsNew) {
+                NavigationView {
+                    WhatsNewView()
+                }
             }
             .sheet(isPresented: $showingSubscription) {
                 NavigationView {
-                    RevenueCatSubscriptionView()
+                    SubscriptionView()
                 }
             }
             // TODO: Uncomment when sign out functionality is ready

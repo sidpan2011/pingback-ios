@@ -67,13 +67,20 @@ final class NewFollowUpStore: ObservableObject {
             return cdFollowUp
         }
         
+        // Check notification permissions before scheduling
+        await notificationManager.checkAuthorizationStatus()
+        
         // Schedule creation nudge notification
-        await notificationManager.scheduleCreationNudge(for: cdFollowUp)
+        notificationManager.scheduleCreationNudge(for: cdFollowUp)
         
         print("🔄 NewFollowUpStore: Reloading follow-ups after create")
         await loadFollowUps()
         
         // Schedule notification for the new follow-up
+        print("🔔 NewFollowUpStore: Scheduling notification for new follow-up")
+        print("   - Due date: \(cdFollowUp.dueAt?.description ?? "nil")")
+        print("   - Should notify: \(cdFollowUp.shouldNotify)")
+        print("   - Is completed: \(cdFollowUp.isCompleted)")
         await notificationManager.scheduleNotification(for: cdFollowUp)
     }
     
@@ -138,6 +145,9 @@ final class NewFollowUpStore: ObservableObject {
         // Cancel notification for deleted follow-up
         await notificationManager.cancelNotification(for: id)
         
+        // Update follow-up count since a follow-up was deleted
+        await SubscriptionManager.shared.recalculateFollowUpCount()
+        
         print("🔄 NewFollowUpStore: Reloading follow-ups after delete")
         await loadFollowUps()
     }
@@ -155,6 +165,9 @@ final class NewFollowUpStore: ObservableObject {
         
         // Update badge count
         await notificationManager.updateBadgeCount()
+        
+        // Note: We don't update follow-up count here because completed follow-ups
+        // still count towards the monthly limit. Only deleted follow-ups free up slots.
     }
     
     /// Snooze a follow-up
@@ -197,12 +210,19 @@ final class NewFollowUpStore: ObservableObject {
         print("   - Contact: \(contact)")
         print("   - App: \(app)")
         print("   - URL: \(url ?? "nil")")
-        print("   - Current follow-ups count before add: \(await followUps.count)")
+        print("   - OverrideDue: \(overrideDue?.description ?? "nil")")
+        print("   - Current follow-ups count before add: \(followUps.count)")
         
         let parsed = Parser.shared.parse(text: text, now: now, eodHour: settings.eodHour, morningHour: settings.morningHour)
         let due = overrideDue ?? parsed?.dueAt ?? defaultDue(now: now)
         let verb = parsed?.verb ?? Parser.shared.detectVerb(in: text) ?? "follow up"
         let finalType = parsed?.type ?? type
+        
+        print("📅 NewFollowUpStore.add(): Date calculation:")
+        print("   - overrideDue: \(overrideDue?.description ?? "nil")")
+        print("   - parsed?.dueAt: \(parsed?.dueAt.description ?? "nil")")
+        print("   - defaultDue: \(defaultDue(now: now).description)")
+        print("   - Final due: \(due.description)")
         
         // Create a person object for the follow-up
         let person = Person(
@@ -243,7 +263,7 @@ final class NewFollowUpStore: ObservableObject {
         
         try await create(followUp)
         print("✅ NewFollowUpStore: Successfully created follow-up!")
-        print("   - Current follow-ups count after add: \(await followUps.count)")
+        print("   - Current follow-ups count after add: \(followUps.count)")
     }
     
     /// Add a new follow-up using a Person object (preserves phone numbers)
@@ -260,12 +280,19 @@ final class NewFollowUpStore: ObservableObject {
         print("   - Person: \(person.displayName) with \(person.phoneNumbers.count) phone numbers")
         print("   - App: \(app)")
         print("   - URL: \(url ?? "nil")")
-        print("   - Current follow-ups count before add: \(await followUps.count)")
+        print("   - OverrideDue: \(overrideDue?.description ?? "nil")")
+        print("   - Current follow-ups count before add: \(followUps.count)")
         
         let parsed = Parser.shared.parse(text: text, now: now, eodHour: settings.eodHour, morningHour: settings.morningHour)
         let due = overrideDue ?? parsed?.dueAt ?? defaultDue(now: now)
         let verb = parsed?.verb ?? Parser.shared.detectVerb(in: text) ?? "follow up"
         let finalType = parsed?.type ?? type
+        
+        print("📅 NewFollowUpStore.addWithPerson(): Date calculation:")
+        print("   - overrideDue: \(overrideDue?.description ?? "nil")")
+        print("   - parsed?.dueAt: \(parsed?.dueAt.description ?? "nil")")
+        print("   - defaultDue: \(defaultDue(now: now).description)")
+        print("   - Final due: \(due.description)")
         
         // Use the provided Person object (with phone numbers)
         let followUp = FollowUp(
@@ -293,7 +320,7 @@ final class NewFollowUpStore: ObservableObject {
         
         try await create(followUp)
         print("✅ NewFollowUpStore: Successfully created follow-up with Person!")
-        print("   - Current follow-ups count after add: \(await followUps.count)")
+        print("   - Current follow-ups count after add: \(followUps.count)")
     }
     
     /// Mark a follow-up as done (compatible with old FollowUpStore interface)
