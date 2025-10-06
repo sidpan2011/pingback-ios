@@ -413,13 +413,17 @@ struct ProPaywallView: View {
             
             HStack(spacing: 16) {
                 Button("Privacy Policy") {
-                    // Open privacy policy
+                    if let url = URL(string: PaywallConstants.privacyURL) {
+                        UIApplication.shared.open(url)
+                    }
                 }
                 .font(.caption)
                 .foregroundColor(.blue)
                 
                 Button("Terms of Service") {
-                    // Open terms of service
+                    if let url = URL(string: PaywallConstants.termsURL) {
+                        UIApplication.shared.open(url)
+                    }
                 }
                 .font(.caption)
                 .foregroundColor(.blue)
