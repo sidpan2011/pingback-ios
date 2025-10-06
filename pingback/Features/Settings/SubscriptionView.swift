@@ -57,7 +57,6 @@ struct SubscriptionView: View {
                         Spacer()
                         if subscriptionStatus == .active {
                             Text("Pro Plan")
-                                .font(.subheadline)
                                 .foregroundColor(.secondary)
                         }
                         

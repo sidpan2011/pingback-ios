@@ -39,7 +39,7 @@ class SubscriptionManager: NSObject, ObservableObject {
     // MARK: - Initialization
     private override init() {
         super.init()
-        
+
         // Check if we're in preview mode first
         if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1" {
             // Preview mode - set default state without configuring RevenueCat
@@ -50,12 +50,9 @@ class SubscriptionManager: NSObject, ObservableObject {
             self.errorMessage = nil
             return
         }
-        
+
         setupRevenueCat()
-        Task {
-            await initializeSubscriptionState()
-            await updateFollowUpCountFromCoreData()
-        }
+        // Initialization is now handled by pingbackApp.swift .task to avoid blocking during init
     }
     
     // MARK: - Public Methods
