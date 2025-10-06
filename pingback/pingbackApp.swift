@@ -50,14 +50,18 @@ struct pingbackApp: App {
                 .task {
                     // Initialize ThemeManager with UserProfileStore
                     themeManager.initialize(with: userProfileStore)
-                    
+
                     // Initialize NotificationManager with Core Data context
                     notificationManager.initialize(with: coreDataStack.viewContext)
-                    
-                    // Initialize subscription manager
-                    await subscriptionManager.initializeSubscriptionState()
+
+                    // Initialize subscription manager (async to avoid blocking UI)
+                    Task.detached(priority: .userInitiated) {
+                        await subscriptionManager.initializeSubscriptionState()
+                        await subscriptionManager.updateFollowUpCountFromCoreData()
+                    }
+
                     await ProServiceGate.shared.configure(with: subscriptionManager)
-                    
+
                     // Process any pending shared data from share extension
                     print("🚀 pingbackApp: Processing shared data on app launch...")
                     let newFollowUpStore = NewFollowUpStore()
