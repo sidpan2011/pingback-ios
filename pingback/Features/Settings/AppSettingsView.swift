@@ -78,8 +78,8 @@ struct AppSettingsView: View {
                             .foregroundColor(.secondary)
                     }
                     
-                    Link("Privacy Policy", destination: URL(string: "https://example.com/privacy")!)
-                    Link("Terms of Service", destination: URL(string: "https://example.com/terms")!)
+                    Link("Privacy Policy", destination: URL(string: "https://getpingback.app/privacy")!)
+                    Link("Terms of Service", destination: URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!)
                 }
             }
             .navigationTitle("Settings")
